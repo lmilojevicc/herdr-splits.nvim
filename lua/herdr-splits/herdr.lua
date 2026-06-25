@@ -93,6 +93,18 @@ function M.focus_pane(direction)
   return code == 0
 end
 
+---Unzoom the current Herdr pane (turn off zoom).
+---Calls `herdr pane zoom --off --current`.
+---@return boolean true on success
+function M.unzoom()
+  if not M.is_in_session() then
+    return false
+  end
+
+  local _, _, code = herdr_exec({ 'pane', 'zoom', '--off', '--current' })
+  return code == 0
+end
+
 ---Resize the current Herdr pane in the given direction.
 ---Calls `herdr pane resize --direction <dir> --amount <float> --current`.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'

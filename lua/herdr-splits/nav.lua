@@ -119,12 +119,21 @@ function M.move_cursor(direction, opts)
     return
   end
 
-  -- Check zoom state
+  -- Check zoom state: unzoom first, then retry Neovim navigation
   if config.disable_nav_when_zoomed and herdr.current_pane_is_zoomed() then
-    if will_wrap and count == 1 then
-      vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+    herdr.unzoom()
+    -- Retry wincmd — other Neovim splits may now be visible
+    vim.cmd('wincmd ' .. dir_key)
+    if vim.api.nvim_get_current_win() ~= prev_win then
+      if (direction == 'left' or direction == 'right') and same_row then
+        local row = offset - vim.api.nvim_win_get_position(0)[1]
+        if row > 0 then
+          vim.cmd('normal! ' .. row .. 'H')
+        end
+      end
+      return
     end
-    return
+    -- Still at edge, fall through to Herdr
   end
 
   -- Check if we're at the Herdr edge too
