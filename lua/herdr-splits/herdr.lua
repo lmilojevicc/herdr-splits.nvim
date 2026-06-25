@@ -29,11 +29,9 @@ end
 ---@param args string[]
 ---@return string stdout, string stderr, number exit_code
 local function herdr_exec(args)
-  vim.validate({ args = { args, 'table' } })
   local cmd = vim.list_extend({ M.herdr_bin() }, args, 1, #args)
-  local stdout = vim.fn.system(cmd)
-  local exit_code = vim.v.shell_error
-  return stdout, '', exit_code
+  local obj = vim.system(cmd, { text = true }):wait()
+  return obj.stdout, obj.stderr, obj.code
 end
 
 ---Check if the current Herdr pane is at the layout boundary in the given direction.

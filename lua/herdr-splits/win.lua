@@ -105,17 +105,4 @@ M.dir_keys_reverse = {
   down = 'k',
 }
 
----Move to the next Neovim window in the given direction, handling count prefix.
----@param direction '"left"'|'"right"'|'"up"'|'"down"'
----@param wrap boolean Whether to allow wrapping to opposite side
-function M.next_window(direction, wrap)
-  local dir_key = M.dir_keys[direction]
-  local count = vim.v.count1
-  if wrap and count == 1 then
-    -- Use large count to wrap to the opposite side
-    count = 99999
-  end
-  vim.cmd(count .. 'wincmd ' .. dir_key)
-end
-
 return M

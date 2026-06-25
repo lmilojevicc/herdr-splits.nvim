@@ -1,5 +1,6 @@
 ---@class HerdrSplitsConfig
 ---@field default_amount number Resize amount as Herdr ratio (float, e.g. 0.03 = 3%)
+---@field neovim_amount number Resize amount for native Neovim resizes (integer cells, default 3)
 ---@field at_edge 'wrap'|'stop'|'split'|function Behavior when cursor at Neovim edge
 ---@field ignored_buftypes string[] Buffer types ignored during resize
 ---@field ignored_filetypes string[] Filetypes ignored during resize
@@ -10,6 +11,7 @@
 
 local M = {
   default_amount = 0.03,
+  neovim_amount = 3,
   at_edge = 'wrap',
   ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
   ignored_filetypes = { 'NvimTree' },
@@ -24,7 +26,12 @@ local M = {
 ---@param opts table|nil
 function M.setup(opts)
   if opts then
-    M = vim.tbl_deep_extend('force', M, opts)
+    -- vim.tbl_deep_extend returns a new table; we must mutate M in place
+    -- so that other modules holding require('herdr-splits.config') see the changes.
+    local merged = vim.tbl_deep_extend('force', M, opts)
+    for k, v in pairs(merged) do
+      M[k] = v
+    end
   end
 end
 

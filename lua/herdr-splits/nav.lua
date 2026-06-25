@@ -7,18 +7,32 @@ local herdr = require('herdr-splits.herdr')
 local win = require('herdr-splits.win')
 
 ---Split a new Neovim window at the edge in the given direction.
----Respects 'splitright' and 'splitbelow' options.
+---Temporarily overrides splitright/splitbelow to place the new window correctly.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'
 local function split_edge(direction)
   if direction == 'left' or direction == 'right' then
-    vim.cmd('vsp')
-    if vim.opt.splitright:get() and direction == 'left' then
-      vim.cmd('wincmd h')
+    local orig_splitright = vim.opt.splitright:get()
+    if direction == 'left' then
+      vim.opt.splitright = false
+      vim.cmd('vsp')
+      vim.opt.splitright = orig_splitright
+    else
+      vim.cmd('vsp')
+      if orig_splitright then
+        vim.cmd('wincmd h')
+      end
     end
   else
-    vim.cmd('sp')
-    if vim.opt.splitbelow:get() and direction == 'up' then
-      vim.cmd('wincmd k')
+    local orig_splitbelow = vim.opt.splitbelow:get()
+    if direction == 'up' then
+      vim.opt.splitbelow = false
+      vim.cmd('sp')
+      vim.opt.splitbelow = orig_splitbelow
+    else
+      vim.cmd('sp')
+      if orig_splitbelow then
+        vim.cmd('wincmd k')
+      end
     end
   end
 end
@@ -65,7 +79,6 @@ function M.move_cursor(direction, opts)
 
   -- Execute the wincmd
   if will_wrap and count == 1 then
-    -- Don't wrap yet, we might want to go to Herdr instead
     vim.cmd('wincmd ' .. dir_key)
   else
     vim.cmd(count .. 'wincmd ' .. dir_key)
@@ -74,23 +87,23 @@ function M.move_cursor(direction, opts)
   if vim.api.nvim_get_current_win() ~= prev_win then
     -- Moved within Neovim. Restore same-row if configured.
     if (direction == 'left' or direction == 'right') and same_row then
-      offset = offset - vim.api.nvim_win_get_position(0)[1]
-      vim.cmd('normal! ' .. offset .. 'H')
+      local row = offset - vim.api.nvim_win_get_position(0)[1]
+      if row > 0 then
+        vim.cmd('normal! ' .. row .. 'H')
+      end
     end
     return
   end
 
   -- We're at a Neovim edge. Try to cross into Herdr.
   if not herdr.is_in_session() then
-    -- Not in Herdr: apply at_edge behavior within Neovim
     if will_wrap and count == 1 then
       if type(at_edge_behavior) == 'function' then
         at_edge_behavior({
           direction = direction,
           split = function() split_edge(direction) end,
           wrap = function()
-            local reverse_key = win.dir_keys_reverse[direction]
-            vim.cmd('wincmd ' .. reverse_key)
+            vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
           end,
         })
       elseif at_edge_behavior == 'stop' then
@@ -100,8 +113,7 @@ function M.move_cursor(direction, opts)
           split_edge(direction)
         end
       else -- 'wrap' (default)
-        local reverse_key = win.dir_keys_reverse[direction]
-        vim.cmd('wincmd ' .. reverse_key)
+        vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
       end
     end
     return
@@ -118,7 +130,6 @@ function M.move_cursor(direction, opts)
   -- Check if we're at the Herdr edge too
   local at_herdr_edge = herdr.current_pane_at_edge(direction)
   if at_herdr_edge == nil then
-    -- Error querying Herdr. Fall back to at_edge behavior.
     if will_wrap and count == 1 then
       vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
     end
@@ -129,7 +140,6 @@ function M.move_cursor(direction, opts)
     -- There's a Herdr pane in this direction. Cross the boundary.
     local moved = herdr.focus_pane(direction)
     if not moved and will_wrap and count == 1 then
-      -- Herdr focus failed, wrap within Neovim
       vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
     end
     return
