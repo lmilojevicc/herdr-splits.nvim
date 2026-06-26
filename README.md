@@ -6,12 +6,11 @@ Inspired by [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim
 
 ## Features
 
-- **Seamless navigation**: `<C-h/j/k/l>` moves between Neovim splits, and crosses into neighbouring Herdr panes when you hit a Neovim edge. Works in both directions — from Neovim and from plain shells.
-- **Seamless resizing**: `<M-h/j/k/l>` resizes the current split. When a Neovim window fills the terminal, the resize is forwarded to Herdr automatically. Works everywhere.
-- **at_edge behaviours**: `wrap` (default), `stop`, `split`, or a custom function — choose what happens when your cursor is at both a Neovim and Herdr edge.
-- **Auto-unzoom**: Navigating or resizing from a zoomed Herdr pane automatically unzooms first (toggleable).
+- **Seamless navigation**: Same keys work in Neovim and plain shells — Herdr forwards them to Neovim when appropriate, Neovim delegates to Herdr at edges.
+- **Seamless resizing**: `<M-h/j/k/l>` resizes Neovim splits natively, delegates to Herdr when a window fills the terminal.
+- **at_edge behaviours**: `wrap` (default), `stop`, `split`, or a custom function.
+- **Auto-unzoom**: Navigating or resizing from a zoomed pane unzooms first (toggleable via single config file).
 - **Count prefix support**: `3<C-h>` moves three splits left; `5<M-l>` resizes five steps right.
-- **Zero Herdr config needed**: No Herdr keybindings or plugin actions required. All logic lives in Neovim.
 
 ## Requirements
 
@@ -36,7 +35,7 @@ herdr plugin link /path/to/herdr-splits
 
 ### 2. Install the Neovim plugin
 
-**lazy.nvim**
+## lazy.nvim
 
 ```lua
 {
@@ -70,7 +69,7 @@ herdr plugin link /path/to/herdr-splits
 }
 ```
 
-**packer.nvim**
+## packer.nvim
 
 ```lua
 use {
@@ -128,6 +127,7 @@ command = "herdr-splits.resize-right"
 ```
 
 > **Note for macOS**: Terminals treat Option as a special character modifier by default. You need to set Option = Alt/Meta:
+>
 > - **Ghostty**: `macos-option-as-alt = true`
 > - **Alacritty**: `option_as_alt = "Both"`
 > - **kitty**: `macos_option_as_alt yes`
@@ -142,7 +142,7 @@ unzoomed first. This is enabled by default.
 
 **To disable**, create `~/.config/herdr-splits/herdr-splits.conf`:
 
-```
+```text
 unzoom_on_nav=false
 ```
 
@@ -171,7 +171,7 @@ require('herdr-splits').move_cursor_right(opts)
 
 Two sides cooperate for seamless two-way navigation:
 
-```
+```text
 You press C-h in a Herdr pane:
 
   ┌─ Herdr intercepts the key (plugin_action keybind)
@@ -190,7 +190,7 @@ You press C-h in a Herdr pane:
 
 ### Navigation
 
-```
+```text
 1. Try moving within Neovim (wincmd h/j/k/l)
    ├─ Window changed → done (stayed within Neovim splits)
    └─ Window didn't change → at Neovim edge
@@ -204,7 +204,7 @@ You press C-h in a Herdr pane:
 
 ### Resizing
 
-```
+```text
 1. Only one Neovim window in this dimension AND fills terminal?
    └─ Yes → herdr pane resize --direction --amount <ratio> → done
 2. Otherwise:
@@ -221,16 +221,16 @@ Detected automatically through environment variables Herdr injects into every pa
 
 ## Comparison with vim-herdr-navigation
 
-| Feature | vim-herdr-navigation | herdr-splits.nvim |
-|---------|---------------------|-------------------|
-| Navigation | ✓ | ✓ |
-| Resizing | ✗ | ✓ |
-| at_edge behaviours | ✗ | wrap / stop / split / custom |
-| Count prefix | ✗ | ✓ (3<C-h> = move 3 left) |
-| Auto-unzoom | ✗ | ✓ (toggleable) |
-| Floating window handling | ✗ | ✓ |
-| Herdr plugin (for keybinds) | ✓ | ✓ |
-| Neovim plugin | ✓ | ✓ |
+| Feature                     | vim-herdr-navigation | herdr-splits.nvim            |
+| --------------------------- | -------------------- | ---------------------------- |
+| Navigation                  | ✓                    | ✓                            |
+| Resizing                    | ✗                    | ✓                            |
+| at_edge behaviours          | ✗                    | wrap / stop / split / custom |
+| Count prefix                | ✗                    | ✓ (3<C-h> = move 3 left)     |
+| Auto-unzoom                 | ✗                    | ✓ (toggleable)               |
+| Floating window handling    | ✗                    | ✓                            |
+| Herdr plugin (for keybinds) | ✓                    | ✓                            |
+| Neovim plugin               | ✓                    | ✓                            |
 
 ## License
 
