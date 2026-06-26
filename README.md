@@ -27,7 +27,7 @@ This provides the `nav-*` and `resize-*` actions that Herdr keybinds invoke.
 
 ```bash
 # From GitHub (once published):
-herdr plugin install owner/herdr-splits
+herdr plugin install lmilojevicc/herdr-splits.nvim
 
 # Local development:
 herdr plugin link /path/to/herdr-splits
@@ -39,7 +39,7 @@ herdr plugin link /path/to/herdr-splits
 
 ```lua
 {
-  'owner/herdr-splits.nvim',
+  'lmilojevicc/herdr-splits.nvim',
   -- or local path during development:
   -- dir = '~/Projects/herdr-splits',
   cond = vim.env.HERDR_ENV == '1',
@@ -73,7 +73,7 @@ herdr plugin link /path/to/herdr-splits
 
 ```lua
 use {
-  'owner/herdr-splits.nvim',
+  'lmilojevicc/herdr-splits.nvim',
   config = function()
     require('herdr-splits').setup()
   end,
@@ -133,7 +133,7 @@ command = "herdr-splits.resize-right"
 > - **kitty**: `macos_option_as_alt yes`
 > - **iTerm**: Profiles → Keys → Left Option key → Esc+
 >
-> If you're using smart-splits.nvim for tmux, add `cond = vim.env.HERDR_ENV ~= '1'` to its spec so the two plugins don't conflict.
+> If you're using [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim) for tmux, add `cond = vim.env.HERDR_ENV ~= '1'` to its spec so the two plugins don't conflict.
 
 ### Auto-unzoom
 
