@@ -6,93 +6,135 @@ Inspired by [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim
 
 ## Features
 
-- **Seamless navigation**: `<C-h/j/k/l>` moves between Neovim splits, and crosses into neighbouring Herdr panes when you hit a Neovim edge. The same keys work everywhere.
-- **Seamless resizing**: `<M-h/j/k/l>` resizes the current split. When a Neovim window fills the terminal width or height, the resize is forwarded to Herdr automatically.
+- **Seamless navigation**: `<C-h/j/k/l>` moves between Neovim splits, and crosses into neighbouring Herdr panes when you hit a Neovim edge. Works in both directions — from Neovim and from plain shells.
+- **Seamless resizing**: `<M-h/j/k/l>` resizes the current split. When a Neovim window fills the terminal, the resize is forwarded to Herdr automatically. Works everywhere.
 - **at_edge behaviours**: `wrap` (default), `stop`, `split`, or a custom function — choose what happens when your cursor is at both a Neovim and Herdr edge.
-- **Zoom-aware**: Optionally disables Herdr navigation when the current pane is zoomed.
+- **Auto-unzoom**: Navigating or resizing from a zoomed Herdr pane automatically unzooms first (toggleable).
 - **Count prefix support**: `3<C-h>` moves three splits left; `5<M-l>` resizes five steps right.
 - **Zero Herdr config needed**: No Herdr keybindings or plugin actions required. All logic lives in Neovim.
 
 ## Requirements
 
 - Neovim ≥ 0.9
-- [Herdr](https://herdr.dev) installed and running (detected via `HERDR_ENV` and `HERDR_PANE_ID` environment variables)
+- [Herdr](https://herdr.dev) ≥ 0.7.0 (for plugin actions)
 
-## Install
+## Installation
 
-### lazy.nvim
+Three steps — install on both the Herdr side and the Neovim side, then add keybinds.
+
+### 1. Install the Herdr plugin
+
+This provides the `nav-*` and `resize-*` actions that Herdr keybinds invoke.
+
+```bash
+# From GitHub (once published):
+herdr plugin install owner/herdr-splits
+
+# Local development:
+herdr plugin link /path/to/herdr-splits
+```
+
+### 2. Install the Neovim plugin
+
+**lazy.nvim**
 
 ```lua
 {
-  'your-org/herdr-splits.nvim',
-  -- or local path:
+  'owner/herdr-splits.nvim',
+  -- or local path during development:
   -- dir = '~/Projects/herdr-splits',
+  cond = vim.env.HERDR_ENV == '1',
+  event = 'VeryLazy',
   config = function()
     require('herdr-splits').setup({
-      -- Defaults shown below. All fields are optional.
-      -- Resize amount as a Herdr ratio (0.03 = 3% of terminal in that dimension).
-      default_amount = 0.03,
-      -- Behavior when cursor is at a Neovim edge:
-      -- 'wrap'  — wrap to the opposite side of Neovim
-      -- 'stop'  — do nothing
-      -- 'split' — create a new Neovim split
-      -- function(context) — custom callback
-      at_edge = 'wrap',
-      -- Buffer types / filetypes ignored during resize operations.
+      -- Defaults shown. All fields optional.
+      default_amount = 0.03,       -- Herdr resize ratio
+      neovim_amount = 3,           -- Neovim resize cells
+      at_edge = 'wrap',            -- 'wrap' | 'stop' | 'split' | function
       ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
       ignored_filetypes = { 'NvimTree' },
-      -- When moving left/right, keep the cursor on the same screen row.
       move_cursor_same_row = false,
-      -- Disable Herdr navigation when the current pane is zoomed.
-      disable_nav_when_zoomed = true,
-      -- Path to the herdr binary (auto-detected from HERDR_BIN_PATH if nil).
-      herdr_bin = nil,
+      disable_nav_when_zoomed = true, -- auto-unzoom on navigate
+      herdr_bin = nil,                -- auto-detected from HERDR_BIN_PATH
     })
   end,
+  keys = {
+    { '<C-h>', function() require('herdr-splits').move_cursor_left() end,  desc = 'Navigate left' },
+    { '<C-j>', function() require('herdr-splits').move_cursor_down() end,  desc = 'Navigate down' },
+    { '<C-k>', function() require('herdr-splits').move_cursor_up() end,    desc = 'Navigate up' },
+    { '<C-l>', function() require('herdr-splits').move_cursor_right() end, desc = 'Navigate right' },
+    { '<M-h>', function() require('herdr-splits').resize_left() end,  desc = 'Resize left' },
+    { '<M-j>', function() require('herdr-splits').resize_down() end,  desc = 'Resize down' },
+    { '<M-k>', function() require('herdr-splits').resize_up() end,    desc = 'Resize up' },
+    { '<M-l>', function() require('herdr-splits').resize_right() end, desc = 'Resize right' },
+  },
 }
 ```
 
-### packer.nvim
+**packer.nvim**
 
 ```lua
 use {
-  'your-org/herdr-splits.nvim',
+  'owner/herdr-splits.nvim',
   config = function()
     require('herdr-splits').setup()
   end,
 }
 ```
 
-### Manual
+### 3. Add keybinds to Herdr config
 
-Clone the repository and add it to your Neovim runtime path:
+Add these to `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
 
-```bash
-git clone https://github.com/your-org/herdr-splits.nvim \
-  ~/.local/share/nvim/site/pack/plugins/start/herdr-splits.nvim
+```toml
+[[keys.command]]
+key = "ctrl+h"
+type = "plugin_action"
+command = "herdr-splits.nav-left"
+
+[[keys.command]]
+key = "ctrl+j"
+type = "plugin_action"
+command = "herdr-splits.nav-down"
+
+[[keys.command]]
+key = "ctrl+k"
+type = "plugin_action"
+command = "herdr-splits.nav-up"
+
+[[keys.command]]
+key = "ctrl+l"
+type = "plugin_action"
+command = "herdr-splits.nav-right"
+
+[[keys.command]]
+key = "alt+h"
+type = "plugin_action"
+command = "herdr-splits.resize-left"
+
+[[keys.command]]
+key = "alt+j"
+type = "plugin_action"
+command = "herdr-splits.resize-down"
+
+[[keys.command]]
+key = "alt+k"
+type = "plugin_action"
+command = "herdr-splits.resize-up"
+
+[[keys.command]]
+key = "alt+l"
+type = "plugin_action"
+command = "herdr-splits.resize-right"
 ```
 
-## Key Mappings
-
-The plugin does **not** set any keymaps automatically. Add these to your Neovim config:
-
-```lua
--- Navigation (Ctrl + hjkl)
-vim.keymap.set('n', '<C-h>', require('herdr-splits').move_cursor_left,  { desc = 'Navigate left' })
-vim.keymap.set('n', '<C-j>', require('herdr-splits').move_cursor_down,  { desc = 'Navigate down' })
-vim.keymap.set('n', '<C-k>', require('herdr-splits').move_cursor_up,    { desc = 'Navigate up' })
-vim.keymap.set('n', '<C-l>', require('herdr-splits').move_cursor_right, { desc = 'Navigate right' })
-
--- Resizing (Alt/Option + hjkl)
-vim.keymap.set('n', '<M-h>', require('herdr-splits').resize_left,  { desc = 'Resize left' })
-vim.keymap.set('n', '<M-j>', require('herdr-splits').resize_down,  { desc = 'Resize down' })
-vim.keymap.set('n', '<M-k>', require('herdr-splits').resize_up,    { desc = 'Resize up' })
-vim.keymap.set('n', '<M-l>', require('herdr-splits').resize_right, { desc = 'Resize right' })
-```
-
-> **Note**: On macOS, some terminals require configuration to treat Option as Alt.  
-> Ghostty: [`macos-option-as-alt = true`](https://ghostty.org/docs/config/reference#macos-option-as-alt)  
-> Alacritty: [`option_as_alt = "Both"`](https://alacritty.org/config-alacritty.html#s20)
+> **Note for macOS**: Terminals treat Option as a special character modifier by default. You need to set Option = Alt/Meta:
+> - **Ghostty**: `macos-option-as-alt = true`
+> - **Alacritty**: `option_as_alt = "Both"`
+> - **kitty**: `macos_option_as_alt yes`
+> - **iTerm**: Profiles → Keys → Left Option key → Esc+
+>
+> If you're using smart-splits.nvim for tmux, add `cond = vim.env.HERDR_ENV ~= '1'` to its spec so the two plugins don't conflict.
 
 ## Lua API
 
@@ -114,14 +156,33 @@ require('herdr-splits').move_cursor_right(opts)
 
 ## How It Works
 
+Two sides cooperate for seamless two-way navigation:
+
+```
+You press C-h in a Herdr pane:
+
+  ┌─ Herdr intercepts the key (plugin_action keybind)
+  │
+  ├─ Is the focused pane running Neovim?
+  │   │
+  │   ├─ YES → forward "ctrl+h" into that pane
+  │   │         └─ Neovim plugin receives it
+  │   │              ├─ Has a window to the left? → wincmd h
+  │   │              └─ At Neovim edge? → herdr pane focus --direction left
+  │   │
+  │   └─ NO (plain shell, etc.) → herdr pane focus --direction left
+  │
+  └─ Result: same keys move you everywhere
+```
+
 ### Navigation
 
 ```
 1. Try moving within Neovim (wincmd h/j/k/l)
    ├─ Window changed → done (stayed within Neovim splits)
    └─ Window didn't change → at Neovim edge
+        ├─ Zoomed? → unzoom first
         ├─ Check if Herdr is running (HERDR_ENV=1)
-        ├─ Check if Herdr pane is zoomed (optional)
         ├─ Check if Herdr pane has a neighbour in this direction
         │   └─ Yes → herdr pane focus --direction → done
         └─ No (at both Neovim AND Herdr edge) →
@@ -131,35 +192,32 @@ require('herdr-splits').move_cursor_right(opts)
 ### Resizing
 
 ```
-1. Is the Neovim window full-width (for left/right) or full-height (for up/down)?
+1. Only one Neovim window in this dimension AND fills terminal?
    └─ Yes → herdr pane resize --direction --amount <ratio> → done
 2. Otherwise:
-   └─ Native Neovim resize (wincmd resize)
+   └─ Native Neovim resize with position-aware +/- operators
 ```
 
-### Herdr Detection
+## Herdr Detection
 
-The plugin detects Herdr automatically through environment variables that Herdr injects into every pane:
+Detected automatically through environment variables Herdr injects into every pane:
 
 - `HERDR_ENV=1` — set when running inside a Herdr-managed pane
 - `HERDR_PANE_ID` — the public pane ID (e.g., `w1:p1`)
 - `HERDR_BIN_PATH` — path to the herdr binary (for subprocess calls)
 
-No Herdr configuration is required.
-
 ## Comparison with vim-herdr-navigation
-
-[vim-herdr-navigation](https://github.com/paulbkim-dev/vim-herdr-navigation) takes a two-sided approach (Herdr plugin + editor mappings) modeled after `vim-tmux-navigator`. `herdr-splits.nvim` takes the opposite approach: all logic lives in Neovim, and Herdr is treated as a passive multiplexer. This means:
 
 | Feature | vim-herdr-navigation | herdr-splits.nvim |
 |---------|---------------------|-------------------|
 | Navigation | ✓ | ✓ |
 | Resizing | ✗ | ✓ |
-| Herdr config needed | Yes (keybinds + plugin) | None |
 | at_edge behaviours | ✗ | wrap / stop / split / custom |
 | Count prefix | ✗ | ✓ (3<C-h> = move 3 left) |
-| Zoom detection | ✗ | ✓ |
+| Auto-unzoom | ✗ | ✓ (toggleable) |
 | Floating window handling | ✗ | ✓ |
+| Herdr plugin (for keybinds) | ✓ | ✓ |
+| Neovim plugin | ✓ | ✓ |
 
 ## License
 
