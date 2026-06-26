@@ -54,7 +54,6 @@ herdr plugin link /path/to/herdr-splits
       ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
       ignored_filetypes = { 'NvimTree' },
       move_cursor_same_row = false,
-      disable_nav_when_zoomed = true, -- auto-unzoom on navigate
       herdr_bin = nil,                -- auto-detected from HERDR_BIN_PATH
     })
   end,
@@ -135,6 +134,20 @@ command = "herdr-splits.resize-right"
 > - **iTerm**: Profiles → Keys → Left Option key → Esc+
 >
 > If you're using smart-splits.nvim for tmux, add `cond = vim.env.HERDR_ENV ~= '1'` to its spec so the two plugins don't conflict.
+
+### Auto-unzoom
+
+When you navigate or resize from a zoomed Herdr pane, the pane is automatically
+unzoomed first. This is enabled by default.
+
+**To disable**, create `~/.config/herdr-splits/herdr-splits.conf`:
+
+```
+unzoom_on_nav=false
+```
+
+This single file controls both the Herdr-side and Neovim-side behaviour — no
+need to configure it twice.
 
 ## Lua API
 

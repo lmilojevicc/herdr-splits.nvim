@@ -5,7 +5,6 @@
 ---@field ignored_buftypes string[] Buffer types ignored during resize
 ---@field ignored_filetypes string[] Filetypes ignored during resize
 ---@field move_cursor_same_row boolean Keep cursor on same screen row when moving left/right
----@field disable_nav_when_zoomed boolean Disable Herdr navigation when pane is zoomed
 ---@field herdr_bin string|nil Path to herdr binary (auto-detected if nil)
 ---@field ignored_events string[] Autocmd events to ignore during resize operations
 
@@ -16,7 +15,6 @@ local M = {
   ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
   ignored_filetypes = { 'NvimTree' },
   move_cursor_same_row = false,
-  disable_nav_when_zoomed = true,
   herdr_bin = nil,
   ignored_events = { 'BufEnter', 'WinEnter' },
 }

@@ -120,7 +120,7 @@ function M.move_cursor(direction, opts)
   end
 
   -- Check zoom state: unzoom first, then retry Neovim navigation
-  if config.disable_nav_when_zoomed and herdr.current_pane_is_zoomed() then
+  if herdr.unzoom_enabled() and herdr.current_pane_is_zoomed() then
     herdr.unzoom()
     -- Retry wincmd — other Neovim splits may now be visible
     vim.cmd('wincmd ' .. dir_key)

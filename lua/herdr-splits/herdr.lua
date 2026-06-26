@@ -105,6 +105,27 @@ function M.unzoom()
   return code == 0
 end
 
+---Check whether auto-unzoom is enabled.
+---Reads from the shared config file ~/.config/herdr-splits/herdr-splits.conf
+---(same file used by the Herdr-side scripts). Default: true.
+---@return boolean
+function M.unzoom_enabled()
+  local config_path = vim.env.HERDR_SPLITS_CONFIG
+    or (vim.env.HOME or '~') .. '/.config/herdr-splits/herdr-splits.conf'
+  local f = io.open(config_path, 'r')
+  if not f then
+    return true -- config file doesn't exist, default enabled
+  end
+  for line in f:lines() do
+    if line:match('^%s*unzoom_on_nav%s*=%s*false') then
+      f:close()
+      return false
+    end
+  end
+  f:close()
+  return true
+end
+
 ---Resize the current Herdr pane in the given direction.
 ---Calls `herdr pane resize --direction <dir> --amount <float> --current`.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'
