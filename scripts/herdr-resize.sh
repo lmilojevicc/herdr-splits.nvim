@@ -6,7 +6,9 @@
 # 2. If yes: forward the key chord into that pane (Neovim's plugin handles it)
 # 3. If no: resize Herdr pane directly
 #
-# If the pane is zoomed, unzoom first (unless HERDR_SPLITS_UNZOOM_NAV=0).
+# If the pane is zoomed, unzoom first.
+# To disable: create ~/.config/herdr-splits/herdr-splits.conf with:
+#   unzoom_on_nav=false
 #
 # Usage: herdr-resize.sh <left|down|up|right> [amount]
 
@@ -15,7 +17,18 @@ set -euo pipefail
 dir="${1:?usage: herdr-resize.sh <left|down|up|right> [amount]}"
 amount="${2:-0.03}"
 herdr="${HERDR_BIN_PATH:-herdr}"
-unzoom="${HERDR_SPLITS_UNZOOM_NAV:-1}"
+
+# --- config ---
+unzoom=1
+config_file="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr-splits/herdr-splits.conf}"
+if [ -f "$config_file" ]; then
+  if grep -q '^\s*unzoom_on_nav\s*=\s*false' "$config_file" 2>/dev/null; then
+    unzoom=0
+  fi
+elif [ "${HERDR_SPLITS_UNZOOM_NAV:-}" = "0" ]; then
+  unzoom=0
+fi
+# --- end config ---
 
 case "$dir" in
   left)  key="alt+h" ;;
