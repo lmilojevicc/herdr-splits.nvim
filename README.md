@@ -140,11 +140,15 @@ command = "herdr-splits.resize-right"
 When you navigate or resize from a zoomed Herdr pane, the pane is automatically
 unzoomed first. This is enabled by default.
 
-**To disable**, create `~/.config/herdr-splits/herdr-splits.conf`:
+**To disable**, create `herdr-splits.conf` in the plugin config directory (default `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`; print it with `herdr plugin config-dir herdr-splits`):
 
 ```text
 unzoom_on_nav=false
 ```
+
+Set `HERDR_SPLITS_CONFIG` to override the path.
+
+_Previously this file lived at `~/.config/herdr-splits/herdr-splits.conf`; move it to the new location above._
 
 This single file controls both the Herdr-side and Neovim-side behaviour — no
 need to configure it twice.

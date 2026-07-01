@@ -7,8 +7,10 @@
 # 3. If no: move Herdr pane focus directly
 #
 # If the pane is zoomed, unzoom first.
-# To disable: create ~/.config/herdr-splits/herdr-splits.conf with:
+# To disable: create a herdr-splits.conf in the plugin config dir with:
 #   unzoom_on_nav=false
+# Default location: ~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf
+# (override the path with HERDR_SPLITS_CONFIG)
 #
 # Usage: herdr-nav.sh <left|down|up|right>
 
@@ -20,7 +22,22 @@ herdr="${HERDR_BIN_PATH:-herdr}"
 # --- config ---
 # Read from config file, then env var, default to enabled.
 unzoom=1
-config_file="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr-splits/herdr-splits.conf}"
+# Resolve the shared config file. Precedence: explicit HERDR_SPLITS_CONFIG
+# override, then Herdr's plugin config dir (injected as HERDR_PLUGIN_CONFIG_DIR
+# when Herdr launches this action), then the XDG default.
+if [ -n "${HERDR_SPLITS_CONFIG:-}" ]; then
+  config_file="$HERDR_SPLITS_CONFIG"
+else
+  base="${HERDR_PLUGIN_CONFIG_DIR:-}"
+  if [ -z "$base" ]; then
+    if [ -n "${XDG_CONFIG_HOME:-}" ] && [ "${XDG_CONFIG_HOME#/}" != "$XDG_CONFIG_HOME" ]; then
+      base="$XDG_CONFIG_HOME/herdr/plugins/config/herdr-splits"
+    else
+      base="${HOME:-}/.config/herdr/plugins/config/herdr-splits"
+    fi
+  fi
+  config_file="$base/herdr-splits.conf"
+fi
 if [ -f "$config_file" ]; then
   if grep -q '^\s*unzoom_on_nav\s*=\s*false' "$config_file" 2>/dev/null; then
     unzoom=0

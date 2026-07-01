@@ -106,12 +106,19 @@ function M.unzoom()
 end
 
 ---Check whether auto-unzoom is enabled.
----Reads from the shared config file ~/.config/herdr-splits/herdr-splits.conf
----(same file used by the Herdr-side scripts). Default: true.
+---Reads from the shared config file in the Herdr plugin config dir
+---(default ~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf;
+---same file used by the Herdr-side scripts). Default: true.
 ---@return boolean
 function M.unzoom_enabled()
-  local config_path = vim.env.HERDR_SPLITS_CONFIG
-    or (vim.env.HOME or '~') .. '/.config/herdr-splits/herdr-splits.conf'
+  local xdg = vim.env.XDG_CONFIG_HOME
+  local base
+  if xdg and xdg:sub(1, 1) == '/' then
+    base = xdg .. '/herdr/plugins/config/herdr-splits'
+  else
+    base = (vim.env.HOME or '~') .. '/.config/herdr/plugins/config/herdr-splits'
+  end
+  local config_path = vim.env.HERDR_SPLITS_CONFIG or (base .. '/herdr-splits.conf')
   local f = io.open(config_path, 'r')
   if not f then
     return true -- config file doesn't exist, default enabled
