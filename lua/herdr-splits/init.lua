@@ -10,6 +10,7 @@ local config = require('herdr-splits.config')
 local nav = require('herdr-splits.nav')
 local resize_mod = require('herdr-splits.resize')
 local win = require('herdr-splits.win')
+local sync = require('herdr-splits.sync')
 
 local M = {}
 
@@ -17,6 +18,14 @@ local M = {}
 ---@param opts table|nil Configuration options (see config.lua for defaults)
 function M.setup(opts)
   config.setup(opts)
+  pcall(sync.sync)
+end
+
+---Sync the Herdr-managed checkout to match this lazy commit.
+---Intended as a lazy.nvim `build` hook entry point; respects `auto_sync_herdr`.
+---Safe to call at any time; no-op unless opted in.
+function M.sync_herdr()
+  pcall(sync.sync)
 end
 
 ---Resize the current split to the left.

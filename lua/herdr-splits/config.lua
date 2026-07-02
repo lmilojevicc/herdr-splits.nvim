@@ -7,6 +7,7 @@
 ---@field move_cursor_same_row boolean Keep cursor on same screen row when moving left/right
 ---@field herdr_bin string|nil Path to herdr binary (auto-detected if nil)
 ---@field ignored_events string[] Autocmd events to ignore during resize operations
+---@field auto_sync_herdr boolean|nil If true, auto-sync the Herdr-managed checkout to match this lazy commit (opt-in; default false)
 
 local M = {
   default_amount = 0.03,
@@ -17,6 +18,7 @@ local M = {
   move_cursor_same_row = false,
   herdr_bin = nil,
   ignored_events = { 'BufEnter', 'WinEnter' },
+  auto_sync_herdr = false,
 }
 
 ---Apply user configuration on top of defaults.

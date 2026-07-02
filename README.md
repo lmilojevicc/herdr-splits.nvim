@@ -44,6 +44,9 @@ herdr plugin link /path/to/herdr-splits
   -- dir = '~/Projects/herdr-splits',
   cond = vim.env.HERDR_ENV == '1',
   event = 'VeryLazy',
+  -- Optional: auto-sync the Herdr-side scripts when lazy updates this plugin.
+  -- Requires `auto_sync_herdr = true` in setup() below to take effect.
+  -- build = 'lua require("herdr-splits").sync_herdr()',
   config = function()
     require('herdr-splits').setup({
       -- Defaults shown. All fields optional.
@@ -54,6 +57,7 @@ herdr plugin link /path/to/herdr-splits
       ignored_filetypes = { 'NvimTree' },
       move_cursor_same_row = false,
       herdr_bin = nil,                -- auto-detected from HERDR_BIN_PATH
+      -- auto_sync_herdr = true,      -- opt-in: sync Herdr-side scripts on update
     })
   end,
   keys = {
@@ -235,6 +239,37 @@ Detected automatically through environment variables Herdr injects into every pa
 | Floating window handling    | ✗                    | ✓                            |
 | Herdr plugin (for keybinds) | ✓                    | ✓                            |
 | Neovim plugin               | ✓                    | ✓                            |
+
+## Updating
+
+The Neovim side (lua) auto-updates via lazy.nvim — it pulls `main` on
+`LazySync`. The Herdr side (the bash scripts under the Herdr-managed
+checkout) does **not** auto-update by default: Herdr v1 has no
+`herdr plugin update`, so a managed checkout stays frozen at the commit it
+was installed from.
+
+**Option A — opt into automatic sync (recommended):** set
+`auto_sync_herdr = true` in `setup()`. The plugin then reinstalls the
+Herdr-managed checkout pinned to the exact commit lazy fetched, so the bash
+scripts always match the lua side. It is a no-op when already in sync, when
+in local-dev (`plugin link`) mode, or when the `herdr` binary is unavailable.
+
+For maximum efficiency, also add a `build` hook so the sync fires only when
+lazy actually updates the plugin, instead of on every Neovim startup:
+
+```lua
+{
+  'lmilojevicc/herdr-splits.nvim',
+  build = 'lua require("herdr-splits").sync_herdr()',
+  config = function()
+    require('herdr-splits').setup({ auto_sync_herdr = true })
+  end,
+}
+```
+
+**Option B — manual:** after an update, re-run
+`herdr plugin install lmilojevicc/herdr-splits.nvim` to refresh the
+Herdr-side scripts.
 
 ## License
 
