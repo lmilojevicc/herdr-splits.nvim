@@ -1,0 +1,100 @@
+name: Bug report
+description: Report something that isn't working as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in the
+        fields below so it can be reproduced.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug.
+    validations:
+      required: true
+  - type: input
+    id: nvim-version
+    attributes:
+      label: Neovim version
+      description: Output of `nvim --version` (first line is enough).
+      placeholder: "NVIM v0.10.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: plugin-manager
+    attributes:
+      label: Plugin manager
+      description: How is herdr-splits.nvim installed?
+      options:
+        - lazy.nvim
+        - packer.nvim
+        - None / manual (local path)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: herdr-version
+    attributes:
+      label: Herdr version
+      description: Output of `herdr --version`.
+      placeholder: "herdr 0.7.0"
+    validations:
+      required: true
+  - type: input
+    id: herdr-splits-version
+    attributes:
+      label: herdr-splits.nvim version
+      description: The plugin version / commit you're on (check with your plugin manager).
+      placeholder: "0.3.0"
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Minimal, numbered steps that trigger the bug.
+      placeholder: |
+        1. Open Neovim inside a Herdr session (`HERDR_ENV=1`)
+        2. Create two vertical splits
+        3. Press `<C-l>`
+        4. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: checkhealth
+    attributes:
+      label: ":checkhealth herdr-splits output"
+      description: Paste the relevant output of `:checkhealth herdr-splits` (Neovim ≥ 0.10).
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: config
+    attributes:
+      label: Setup / config
+      description: Your `setup({})` call and any relevant keybinds.
+      render: lua
+    validations:
+      required: false
+  - type: textarea
+    id: os
+    attributes:
+      label: OS / terminal
+      description: Operating system and terminal emulator (note if Option-as-Alt is enabled on macOS).
+      placeholder: "macOS 14 / Ghostty (macos-option-as-alt = true)"
+    validations:
+      required: false
