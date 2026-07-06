@@ -8,17 +8,37 @@
 ---@field herdr_bin string|nil Path to herdr binary (auto-detected if nil)
 ---@field ignored_events string[] Autocmd events to ignore during resize operations
 ---@field auto_sync_herdr boolean|nil If true, auto-sync the Herdr-managed checkout to match this lazy commit (opt-in; default false)
+---@field floating_zindex_max number Threshold below which a floating window's zindex classifies it as an embedded sidebar (default 50; Neovim's default float zindex)
+---@field ignore_previewwindows boolean If true, vim.wo[winid].previewwindow windows (e.g. dadbod `.dbout`) are treated as sidebars (opt-in; default false)
 
 local M = {
   default_amount = 0.03,
   neovim_amount = 3,
   at_edge = 'wrap',
-  ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
-  ignored_filetypes = { 'NvimTree' },
+  ignored_buftypes = { 'nofile', 'quickfix', 'prompt', 'help', 'terminal' },
+  ignored_filetypes = {
+    'NvimTree',
+    -- sidebars
+    'neo-tree',
+    'snacks_dashboard',
+    'snacks_explorer',
+    'snacks_picker',
+    -- DB / REPL / data sidebars
+    'dadbod-ui',
+    'dbout',
+    -- outlines / symbols
+    'aerial',
+    'Outline',
+    -- diagnostics / quick lists
+    'Trouble',
+    'quickfix',
+  },
   move_cursor_same_row = false,
   herdr_bin = nil,
   ignored_events = { 'BufEnter', 'WinEnter' },
   auto_sync_herdr = false,
+  floating_zindex_max = 50,
+  ignore_previewwindows = false,
 }
 
 ---Apply user configuration on top of defaults.

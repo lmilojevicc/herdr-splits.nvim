@@ -133,4 +133,30 @@ function M.move_cursor_right(opts)
   end
 end
 
+---Append a filetype to ignored_filetypes at runtime (de-duped).
+---@param name string Filetype name, e.g. 'fugitive'
+---@return boolean true if added, false if already present
+function M.add_ignored_filetype(name)
+  for _, v in ipairs(config.ignored_filetypes) do
+    if v == name then
+      return false
+    end
+  end
+  table.insert(config.ignored_filetypes, name)
+  return true
+end
+
+---Append a buftype to ignored_buftypes at runtime (de-duped).
+---@param name string Buffer type, e.g. 'help'
+---@return boolean true if added, false if already present
+function M.add_ignored_buftype(name)
+  for _, v in ipairs(config.ignored_buftypes) do
+    if v == name then
+      return false
+    end
+  end
+  table.insert(config.ignored_buftypes, name)
+  return true
+end
+
 return M

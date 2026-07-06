@@ -6,6 +6,13 @@ local config = require('herdr-splits.config')
 local herdr = require('herdr-splits.herdr')
 local win = require('herdr-splits.win')
 
+---Treat the current window as a sidebar that should not be navigated through.
+---Combines the configured ignore lists with the embedded-float heuristic.
+---@return boolean
+local function is_sidebar()
+  return win.is_ignored_or_preview() or win.is_embedded_floating_window()
+end
+
 ---Split a new Neovim window at the edge in the given direction.
 ---Temporarily overrides splitright/splitbelow to place the new window correctly.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'
@@ -54,8 +61,11 @@ function M.move_cursor(direction, opts)
     end
   end
 
-  -- Handle floating windows: just forward to Herdr
-  if win.is_floating() then
+  -- Handle floating windows: just forward to Herdr,
+  -- EXCEPT for embedded sidebars (snacks/neo-tree float/aerial float):
+  -- those should stay in Neovim so the user can keep interacting
+  -- with the picker.
+  if win.is_floating() and not win.is_embedded_floating_window() then
     herdr.focus_pane(direction)
     return
   end
@@ -98,10 +108,12 @@ function M.move_cursor(direction, opts)
   -- We're at a Neovim edge. Try to cross into Herdr.
   if not herdr.is_in_session() then
     if will_wrap and count == 1 then
+      local sidebar = is_sidebar()
       if type(at_edge_behavior) == 'function' then
         at_edge_behavior({
           direction = direction,
           split = function() split_edge(direction) end,
+          is_sidebar = sidebar,
           wrap = function()
             vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
           end,
@@ -109,17 +121,22 @@ function M.move_cursor(direction, opts)
       elseif at_edge_behavior == 'stop' then
         return
       elseif at_edge_behavior == 'split' then
-        if not win.is_ignored_win() then
+        if not sidebar then
           split_edge(direction)
         end
       else -- 'wrap' (default)
-        vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+        if not sidebar then
+          vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+        end
       end
     end
     return
   end
 
-  -- Check zoom state: unzoom first, then retry Neovim navigation
+  -- Check zoom state: unzoom first, then retry Neovim navigation.
+  -- Must happen BEFORE the at_herdr_edge check — when zoomed, the pane fills
+  -- the screen so herdr reports it as being at every edge, making
+  -- at_herdr_edge useless until we unzoom.
   if herdr.unzoom_enabled() and herdr.current_pane_is_zoomed() then
     herdr.unzoom()
     -- Retry wincmd — other Neovim splits may now be visible
@@ -133,13 +150,13 @@ function M.move_cursor(direction, opts)
       end
       return
     end
-    -- Still at edge, fall through to Herdr
+    -- Still at edge after unzoom; fall through to Herdr edge check.
   end
 
   -- Check if we're at the Herdr edge too
   local at_herdr_edge = herdr.current_pane_at_edge(direction)
   if at_herdr_edge == nil then
-    if will_wrap and count == 1 then
+    if will_wrap and count == 1 and not is_sidebar() then
       vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
     end
     return
@@ -148,17 +165,19 @@ function M.move_cursor(direction, opts)
   if not at_herdr_edge then
     -- There's a Herdr pane in this direction. Cross the boundary.
     local moved = herdr.focus_pane(direction)
-    if not moved and will_wrap and count == 1 then
+    if not moved and will_wrap and count == 1 and not is_sidebar() then
       vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
     end
     return
   end
 
-  -- At both Neovim AND Herdr edges. Apply at_edge behavior.
+  -- At both Neovim AND Herdr edges (no herdr pane to cross into).
+  -- Apply at_edge behavior. No unzoom — there's nowhere to go.
   if type(at_edge_behavior) == 'function' then
     at_edge_behavior({
       direction = direction,
       split = function() split_edge(direction) end,
+      is_sidebar = is_sidebar(),
       wrap = function()
         vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
       end,
@@ -166,11 +185,11 @@ function M.move_cursor(direction, opts)
   elseif at_edge_behavior == 'stop' then
     return
   elseif at_edge_behavior == 'split' then
-    if not win.is_ignored_win() then
+    if not is_sidebar() then
       split_edge(direction)
     end
   else -- 'wrap' (default)
-    if will_wrap and count == 1 then
+    if will_wrap and count == 1 and not is_sidebar() then
       vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
     end
   end

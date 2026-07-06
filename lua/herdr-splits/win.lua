@@ -90,6 +90,37 @@ function M.is_floating(winid)
   return vim.api.nvim_win_get_config(winid or 0).relative ~= ''
 end
 
+---Check if a window is an "embedded" floating window — one that is technically
+---floating (relative ~= '') but visually behaves like a sidebar (e.g. snacks
+---explorer). Neovim's default floating zindex is 50; anything explicitly set
+---below that signals the window is meant to coexist with normal splits.
+---@param winid number|nil window ID, defaults to current
+---@return boolean
+function M.is_embedded_floating_window(winid)
+  if not M.is_floating(winid) then
+    return false
+  end
+  local cfg = vim.api.nvim_win_get_config(winid or 0)
+  local threshold = config.floating_zindex_max or 50
+  return cfg.zindex ~= nil and cfg.zindex < threshold
+end
+
+---Same as M.is_ignored_win but also checks previewwindow when opt-in.
+---@param winid number|nil window ID, defaults to current
+---@return boolean
+function M.is_ignored_or_preview(winid)
+  if M.is_ignored_win(winid) then
+    return true
+  end
+  if config.ignore_previewwindows then
+    local ok, pw = pcall(vim.api.nvim_win_get_option, winid or 0, 'previewwindow')
+    if ok and pw then
+      return true
+    end
+  end
+  return false
+end
+
 ---Direction key shorthand for wincmd.
 M.dir_keys = {
   left = 'h',
