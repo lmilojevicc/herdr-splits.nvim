@@ -9,12 +9,13 @@ Inspired by [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim
 - **Seamless navigation**: Same keys work in Neovim and plain shells — Herdr forwards them to Neovim when appropriate, Neovim delegates to Herdr at edges.
 - **Seamless resizing**: `<M-h/j/k/l>` resizes Neovim splits natively, delegates to Herdr when a window fills the terminal.
 - **at_edge behaviours**: `wrap` (default), `stop`, `split`, or a custom function.
-- **Auto-unzoom**: Navigating or resizing from a zoomed pane unzooms first (toggleable via single config file).
+- **Plugin-aware**: Ignores snacks/neo-tree/dadbod-ui/aerial sidebars and embedded floats (zindex < 50) by default — your keybinds never get trapped inside a picker.
+- **Smart unzoom**: When crossing from Neovim into a sibling Herdr pane, auto-unzooms first so the target pane is visible. Does not unzoom when moving between Neovim splits or when already at both edges.
 - **Count prefix support**: `3<C-h>` moves three splits left; `5<M-l>` resizes five steps right.
 
 ## Requirements
 
-- Neovim ≥ 0.9
+- Neovim ≥ 0.10
 - [Herdr](https://herdr.dev) ≥ 0.7.0 (for plugin actions)
 
 ## Installation
@@ -53,10 +54,28 @@ herdr plugin link /path/to/herdr-splits
       default_amount = 0.03,       -- Herdr resize ratio
       neovim_amount = 3,           -- Neovim resize cells
       at_edge = 'wrap',            -- 'wrap' | 'stop' | 'split' | function
-      ignored_buftypes = { 'nofile', 'quickfix', 'prompt' },
-      ignored_filetypes = { 'NvimTree' },
+      ignored_buftypes = { 'nofile', 'quickfix', 'prompt', 'help', 'terminal' },
+      ignored_filetypes = {
+        'NvimTree',
+        -- sidebars
+        'neo-tree',
+        'snacks_dashboard',
+        'snacks_explorer',
+        'snacks_picker',
+        -- DB / REPL / data sidebars
+        'dadbod-ui',
+        'dbout',
+        -- outlines / symbols
+        'aerial',
+        'Outline',
+        -- diagnostics / quick lists
+        'Trouble',
+        'quickfix',
+      },
       move_cursor_same_row = false,
       herdr_bin = nil,                -- auto-detected from HERDR_BIN_PATH
+      floating_zindex_max = 50,       -- floats with zindex < this are treated as embedded sidebars
+      ignore_previewwindows = false,  -- opt-in: also treat previewwindow windows (e.g. .dbout) as sidebars
       -- auto_sync_herdr = true,      -- opt-in: sync Herdr-side scripts on update
     })
   end,
@@ -139,23 +158,30 @@ command = "herdr-splits.resize-right"
 >
 > If you're using [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim) for tmux, add `cond = vim.env.HERDR_ENV ~= '1'` to its spec so the two plugins don't conflict.
 
-### Auto-unzoom
+### Auto-unzoom on cross-pane navigation
 
-When you navigate or resize from a zoomed Herdr pane, the pane is automatically
-unzoomed first. This is enabled by default.
+When you navigate from Neovim **across the boundary into a sibling Herdr
+pane** (e.g. `<C-h>` at the left Neovim edge with a Herdr pane to the left),
+herdr-splits auto-unzooms first so the target pane becomes visible, then
+moves focus there.
 
-**To disable**, create `herdr-splits.conf` in the plugin config directory (default `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`; print it with `herdr plugin config-dir herdr-splits`):
+herdr-splits does **not** unzoom when:
+
+- Moving between Neovim splits inside the same pane.
+- At both Neovim and Herdr edges (nowhere to cross to) — your `at_edge`
+  behaviour (`wrap` / `stop` / `split` / custom) takes over.
+
+**To disable auto-unzoom entirely**, create `herdr-splits.conf` in the plugin
+config directory (default `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`;
+print it with `herdr plugin config-dir herdr-splits`):
 
 ```text
 unzoom_on_nav=false
 ```
 
-Set `HERDR_SPLITS_CONFIG` to override the path.
-
-_Previously this file lived at `~/.config/herdr-splits/herdr-splits.conf`; move it to the new location above._
-
-This single file controls both the Herdr-side and Neovim-side behaviour — no
-need to configure it twice.
+Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
+both the Herdr-side and Neovim-side behaviour — no need to configure it
+twice.
 
 ## Lua API
 
@@ -173,6 +199,39 @@ require('herdr-splits').move_cursor_left({ same_row = true, at_edge = 'stop' })
 require('herdr-splits').move_cursor_down(opts)
 require('herdr-splits').move_cursor_up(opts)
 require('herdr-splits').move_cursor_right(opts)
+```
+
+## Compatibility
+
+`herdr-splits.nvim` ships with an opinionated default `ignored_filetypes` list so your navigation and resize keybinds don't get trapped inside common sidebars and pickers. The list is consulted at **every** `at_edge` decision point (`wrap`, `stop`, `split`, custom function) and during Herdr delegation from `resize.lua`.
+
+The default `ignored_filetypes` covers:
+
+- `NvimTree` — `nvim-tree/nvim-tree.lua` default file tree (`buftype=nofile`, `winfixwidth`).
+- `neo-tree` — `nvim-neo-tree/neo-tree.nvim` LazyVim default (`winfixwidth` sidebar).
+- `snacks_dashboard` / `snacks_explorer` / `snacks_picker` — `folke/snacks` sidebar/picker windows (the float case is handled by `is_embedded_floating_window` below).
+- `dadbod-ui` / `dbout` — `kristijanhusak/vim-dadbod-ui` drawer and `tpope/vim-dadbod` preview result buffer.
+- `aerial` / `Outline` — code-outline sidebars.
+- `Trouble` / `quickfix` — diagnostics and quickfix lists.
+
+The default `ignored_buftypes` covers `nofile`, `quickfix`, `prompt`, `help`, and `terminal`.
+
+**Embedded floating windows** (snacks explorer in float mode, neo-tree in float mode, aerial in float mode) are detected via the `zindex < floating_zindex_max` heuristic (default threshold 50, Neovim's default float zindex) and treated as sidebars for navigation/resize decisions. Override the threshold via the `floating_zindex_max` config field.
+
+**Add your own at runtime** from any `VeryLazy` autocmd:
+
+```lua
+require('herdr-splits').add_ignored_filetype('lazy')
+require('herdr-splits').add_ignored_buftype('help')
+```
+
+**Debug with `:checkhealth herdr-splits`** (Neovim ≥ 0.10) to see which filetypes/buftypes are ignored, whether Herdr is in session, and whether the current window is classified as a sidebar.
+
+If you want to **completely replace** the default list (e.g. to opt out of one of the entries), note that `vim.tbl_deep_extend('force', M, opts)` **concatenates** the `ignored_filetypes` / `ignored_buftypes` tables you pass; you keep what you pass AND the defaults are appended. To opt out, assign directly after `setup()`:
+
+```lua
+require('herdr-splits').setup({ ignored_filetypes = {} })  -- inherit nothing
+require('herdr-splits').add_ignored_filetype('mything')     -- then add back what you want
 ```
 
 ## How It Works
@@ -202,7 +261,7 @@ You press C-h in a Herdr pane:
 1. Try moving within Neovim (wincmd h/j/k/l)
    ├─ Window changed → done (stayed within Neovim splits)
    └─ Window didn't change → at Neovim edge
-        ├─ Zoomed? → unzoom first
+        ├─ Zoomed + Herdr pane in this direction? → unzoom first, then cross
         ├─ Check if Herdr is running (HERDR_ENV=1)
         ├─ Check if Herdr pane has a neighbour in this direction
         │   └─ Yes → herdr pane focus --direction → done
@@ -218,6 +277,15 @@ You press C-h in a Herdr pane:
 2. Otherwise:
    └─ Native Neovim resize with position-aware +/- operators
 ```
+
+### Float and embedded-float classification
+
+Two predicates classify the current window before any nav/resize decision:
+
+- `win.is_floating(winid)` — `nvim_win_get_config(winid).relative ~= ''` (Neovim's built-in float check).
+- `win.is_embedded_floating_window(winid)` — true only for floats with `zindex < floating_zindex_max` (default 50); matches snacks/neo-tree/aerial float-mode sidebars.
+
+True floats forward to Herdr; embedded floats behave as sidebars (no movement, no Herdr delegation).
 
 ## Herdr Detection
 
@@ -235,7 +303,7 @@ Detected automatically through environment variables Herdr injects into every pa
 | Resizing                    | ✗                    | ✓                            |
 | at_edge behaviours          | ✗                    | wrap / stop / split / custom |
 | Count prefix                | ✗                    | ✓ (3<C-h> = move 3 left)     |
-| Auto-unzoom                 | ✗                    | ✓ (toggleable)               |
+| Auto-unzoom on cross-pane nav   | ✗                    | ✓                            |
 | Floating window handling    | ✗                    | ✓                            |
 | Herdr plugin (for keybinds) | ✓                    | ✓                            |
 | Neovim plugin               | ✓                    | ✓                            |
@@ -270,6 +338,10 @@ lazy actually updates the plugin, instead of on every Neovim startup:
 **Option B — manual:** after an update, re-run
 `herdr plugin install lmilojevicc/herdr-splits.nvim` to refresh the
 Herdr-side scripts.
+
+**0.2.x → 0.3.0 migration:** the new default `ignored_filetypes` and `ignored_buftypes` are union-merged with your existing config (you keep what you pass; we append the new defaults). Two new config fields are available: `floating_zindex_max` (default 50; threshold below which a float is classified as an embedded sidebar) and `ignore_previewwindows` (default false; opt-in to also treat preview-window buffers as sidebars, covering dadbod's `.dbout`). New runtime API: `add_ignored_filetype(name)` and `add_ignored_buftype(name)` (both de-duped). New user command: `:checkhealth herdr-splits` (Neovim ≥ 0.10).
+
+**Zoom behaviour refinement (0.3.0):** herdr-splits now auto-unzooms **only** when crossing from Neovim into a sibling Herdr pane (so the target pane is visible). It does not unzoom when moving between Neovim splits or when at both edges. The `unzoom_on_nav` conf-file knob (default: enabled) controls this — set `unzoom_on_nav=false` in `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf` to disable.
 
 ## License
 

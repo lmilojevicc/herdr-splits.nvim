@@ -73,11 +73,11 @@ function M.current_pane_is_zoomed()
   end
 
   local ok, data = pcall(vim.json.decode, stdout)
-  if not ok or not data or not data.result then
+  if not ok or not data or not data.result or not data.result.layout then
     return nil
   end
 
-  return data.result.zoomed == true
+  return data.result.layout.zoomed == true
 end
 
 ---Focus a Herdr pane in the given direction.
