@@ -41,8 +41,8 @@ herdr plugin link /path/to/herdr-splits
 ```lua
 {
   'lmilojevicc/herdr-splits.nvim',
-  -- or local path during development:
-  -- dir = '~/Projects/herdr-splits',
+  -- For local development, swap the repo line for `dir = '/path/to/herdr-splits'`
+  -- (see "Local development" below).
   cond = vim.env.HERDR_ENV == '1',
   event = 'VeryLazy',
   -- Optional: auto-sync the Herdr-side scripts when lazy updates this plugin.
@@ -189,6 +189,33 @@ unzoom_on_nav=false
 Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
 both the Herdr-side and Neovim-side behaviour — no need to configure it
 twice.
+
+## Local development
+
+Both sides load straight from your clone, so edits take effect immediately
+(on the Herdr side; Neovim picks them up on reload/restart).
+
+1. **Link the Herdr plugin** to your local repo:
+
+   ```bash
+   herdr plugin link /path/to/herdr-splits
+   ```
+
+2. **Point lazy.nvim at the same path** — change the first line of the spec
+   from the GitHub repo to `dir`:
+
+   ```lua
+   {
+     dir = '/path/to/herdr-splits',
+     cond = vim.env.HERDR_ENV == '1',
+     -- ...rest of the spec unchanged
+   }
+   ```
+
+Run `herdr plugin list` to confirm it shows `herdr-splits ... [local:/...]`.
+To switch back to the published version: `herdr plugin unlink herdr-splits`,
+then `herdr plugin install lmilojevicc/herdr-splits.nvim`, and revert the
+lazy spec to `'lmilojevicc/herdr-splits.nvim'`.
 
 ## Lua API
 
