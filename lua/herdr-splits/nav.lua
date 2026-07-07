@@ -137,11 +137,8 @@ function M.move_cursor(direction, opts)
   -- Must happen BEFORE the at_herdr_edge check — when zoomed, the pane fills
   -- the screen so herdr reports it as being at every edge, making
   -- at_herdr_edge useless until we unzoom.
-  local did_unzoom = false
   if herdr.unzoom_enabled() and herdr.current_pane_is_zoomed() then
-    -- Only treat as unzoomed if the CLI actually succeeded, so a failed
-    -- unzoom can't leave us crossing against unreliable (still-zoomed) edges.
-    did_unzoom = herdr.unzoom()
+    herdr.unzoom()
     -- Retry wincmd — other Neovim splits may now be visible
     vim.cmd('wincmd ' .. dir_key)
     if vim.api.nvim_get_current_win() ~= prev_win then
@@ -193,14 +190,11 @@ function M.move_cursor(direction, opts)
     end
   else -- 'wrap' (default)
     if will_wrap and count == 1 and not is_sidebar() then
-      if did_unzoom then
-        -- We just unzoomed specifically to leave this pane; wrapping to
-        -- another split in the SAME pane would defeat that, so cross to the
-        -- sibling Herdr pane on the opposite side instead. If there is no
-        -- sibling (single Herdr pane), fall back to the in-Neovim wrap.
-        if not herdr.focus_pane(win.reverse_direction[direction]) then
-          vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
-        end
+      -- Wrap to the opposite side. If a Herdr pane exists there, cross into
+      -- it (so a pane sitting next to a full-height Neovim group is
+      -- reachable); otherwise wrap within Neovim (smart-splits default).
+      if herdr.current_pane_at_edge(win.reverse_direction[direction]) == false then
+        herdr.focus_pane(win.reverse_direction[direction])
       else
         vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
       end
