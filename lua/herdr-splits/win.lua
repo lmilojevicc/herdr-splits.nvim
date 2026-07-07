@@ -136,4 +136,12 @@ M.dir_keys_reverse = {
   down = 'k',
 }
 
+---Reverse of a direction name: left<->right, up<->down.
+M.reverse_direction = {
+  left = 'right',
+  right = 'left',
+  up = 'down',
+  down = 'up',
+}
+
 return M
