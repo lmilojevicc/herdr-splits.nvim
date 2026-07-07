@@ -351,7 +351,12 @@ Herdr-side scripts.
 
 **Zoom behaviour refinement (0.3.0):** herdr-splits auto-unzooms when crossing from Neovim into a sibling Herdr pane (so the target pane is visible), and does not unzoom when moving between Neovim splits. The `unzoom_on_nav` conf-file knob (default: enabled) controls this — set `unzoom_on_nav=false` in `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf` to disable.
 
-**Zoom & wrap fix (post-0.3.0):** navigating away from a zoomed pane now reliably unzooms and reaches a useful target. Moving between plain Herdr panes while zoomed now unzooms then focuses the neighbour (previously the source pane stayed zoomed because the Herdr-side script never unzoomed). Herdr-pane navigation wraps around at layout edges (past the last pane → the first). The default `wrap` at both Neovim and Herdr edges now crosses to the opposite Herdr pane whenever one exists — zoomed or not (e.g. `pane | nvim` and `pane | nvim win1 | win2` wrap `ctrl+l` back to the pane) — falling back to the in-Neovim wrap only when there is no sibling pane. `unzoom_on_nav=false` still disables all auto-unzoom (in which case zoomed edges are not trusted for the wrap decision).
+**0.4.0 — zoom & wrap-around navigation:**
+
+- **Herdr-pane ↔ Herdr-pane nav while zoomed** now unzooms then focuses the neighbour (previously the source pane stayed zoomed, because the Herdr-side `herdr-nav.sh` never unzoomed). The unzoom runs only for plain Herdr panes — Neovim panes forward the chord untouched, so moving between Neovim splits no longer unzooms (fixes a regression from 0.3.0).
+- **Wrap-around at layout edges** (smart-splits style): pressing past the last Herdr pane wraps to the first; at both the Neovim and Herdr edge, the default `wrap` crosses to the Herdr pane on the opposite side whenever one exists (e.g. `pane | nvim` and `pane | nvim win1 | win2` wrap `ctrl+l` back to the pane), falling back to the in-Neovim wrap when there is no sibling. Works whether or not the pane is zoomed.
+- **Wrap works from sidebars** (dadbod-ui, neo-tree, quickfix, …): filetype-based sidebars can now wrap out at an edge instead of being trapped; only embedded floating overlays remain gated. `split`-at-edge and Herdr resize delegation are still skipped from sidebars.
+- `unzoom_on_nav=false` still disables all auto-unzoom (in which case zoomed edges are not trusted for the wrap decision).
 
 ## License
 

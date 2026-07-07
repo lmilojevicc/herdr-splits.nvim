@@ -1,6 +1,6 @@
 id = "herdr-splits"
 name = "Herdr Splits"
-version = "0.3.0"
+version = "0.4.0"
 min_herdr_version = "0.7.0"
 description = "Seamless Ctrl+h/j/k/l and Alt+h/j/k/l navigation and resizing between Herdr panes and Neovim splits"
 platforms = ["linux", "macos"]
