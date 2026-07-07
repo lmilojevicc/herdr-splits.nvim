@@ -175,6 +175,8 @@ the opposite side:
 - Otherwise it wraps within Neovim (smart-splits default).
 - Between plain Herdr panes, navigation wraps around at edges too (past the
   last pane → the first).
+- Wrap works even when you're on a sidebar (dbui, neo-tree, quickfix, ...),
+  so you can leave it at an edge; only embedded floating overlays are gated.
 
 **To disable auto-unzoom entirely**, create `herdr-splits.conf` in the plugin
 config directory (default `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`;
@@ -208,7 +210,7 @@ require('herdr-splits').move_cursor_right(opts)
 
 ## Compatibility
 
-`herdr-splits.nvim` ships with an opinionated default `ignored_filetypes` list so your navigation and resize keybinds don't get trapped inside common sidebars and pickers. The list is consulted at **every** `at_edge` decision point (`wrap`, `stop`, `split`, custom function) and during Herdr delegation from `resize.lua`.
+`herdr-splits.nvim` ships with an opinionated default `ignored_filetypes` list so your resize keybinds don't get trapped inside common sidebars and pickers. These filetypes are treated as sidebars: `split`-at-edge and Herdr resize delegation are skipped from them, and the flag is passed to a custom `at_edge` function as `is_sidebar`. `wrap`, however, still works from a sidebar so you can leave it (e.g. `ctrl+l` on a `dadbod-ui` drawer wraps to the opposite side); only embedded floating overlays are gated.
 
 The default `ignored_filetypes` covers:
 
