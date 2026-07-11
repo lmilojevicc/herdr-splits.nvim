@@ -1,0 +1,23 @@
+# Configuration for GitHub's auto-generated release notes — the
+# "Generate release notes" button shown when cutting a release. Merged PRs
+# since the previous release are listed by title and grouped by the labels
+# below, so label your PRs (feature / bug / docs / chore). Releases may also
+# be hand-curated (see the v0.3.0 / v0.4.0 releases).
+changelog:
+  categories:
+    - title: Features
+      labels:
+        - feature
+        - enhancement
+    - title: Bug fixes
+      labels:
+        - bug
+        - fix
+    - title: Documentation
+      labels:
+        - documentation
+        - docs
+    - title: Internal
+      labels:
+        - chore
+        - internal

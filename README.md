@@ -398,23 +398,7 @@ lazy actually updates the plugin, instead of on every Neovim startup:
 `herdr plugin install lmilojevicc/herdr-splits.nvim` to refresh the
 Herdr-side scripts.
 
-**0.2.x → 0.3.0 migration:** the new default `ignored_filetypes` and `ignored_buftypes` are union-merged with your existing config (you keep what you pass; we append the new defaults). Two new config fields are available: `floating_zindex_max` (default 50; threshold below which a float is classified as an embedded sidebar) and `ignore_previewwindows` (default false; opt-in to also treat preview-window buffers as sidebars, covering dadbod's `.dbout`). New runtime API: `add_ignored_filetype(name)` and `add_ignored_buftype(name)` (both de-duped). New user command: `:checkhealth herdr-splits` (Neovim ≥ 0.10).
-
-**Zoom behaviour refinement (0.3.0):** herdr-splits auto-unzooms when crossing from Neovim into a sibling Herdr pane (so the target pane is visible), and does not unzoom when moving between Neovim splits. The `unzoom_on_nav` conf-file knob (default: enabled) controls this — set `unzoom_on_nav=false` in `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf` to disable.
-
-**0.4.0 — zoom & wrap-around navigation:**
-
-- **Herdr-pane ↔ Herdr-pane nav while zoomed** now unzooms then focuses the neighbour (previously the source pane stayed zoomed, because the Herdr-side `herdr-nav.sh` never unzoomed). The unzoom runs only for plain Herdr panes — Neovim panes forward the chord untouched, so moving between Neovim splits no longer unzooms (fixes a regression from 0.3.0).
-- **Wrap-around at layout edges** (smart-splits style): pressing past the last Herdr pane wraps to the first; at both the Neovim and Herdr edge, the default `wrap` crosses to the Herdr pane on the opposite side whenever one exists (e.g. `pane | nvim` and `pane | nvim win1 | win2` wrap `ctrl+l` back to the pane), falling back to the in-Neovim wrap when there is no sibling. Works whether or not the pane is zoomed.
-- **Wrap works from sidebars** (dadbod-ui, neo-tree, quickfix, …): filetype-based sidebars can now wrap out at an edge instead of being trapped; only embedded floating overlays remain gated. `split`-at-edge and Herdr resize delegation are still skipped from sidebars.
-- `unzoom_on_nav=false` still disables all auto-unzoom (in which case zoomed edges are not trusted for the wrap decision).
-
-**0.5.0 — `nav_at_edge`: stop at edges on both sides:**
-
-- **New conf-file knob `nav_at_edge`** in `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf` controls wrap-across-boundary on BOTH the Herdr pane side and the Neovim edge-wrap side. `wrap` (default, current behaviour) or `stop`. One file, one switch — no need to configure the Neovim side separately.
-- **Plain Herdr panes:** with `stop`, navigating past the last pane halts instead of wrapping to the first (tmux-style); `wrap` preserves smart-splits-style wrap-around.
-- **Neovim edge wrap:** with `at_edge='wrap'` set in Neovim, `stop` keeps the wrap inside Neovim (e.g. `ctrl+l` from the last split cycles to the first split) instead of crossing to the Herdr pane on the opposite side; `wrap` (default) still crosses. `at_edge='stop'` halts regardless of `nav_at_edge`.
-- Backward compatible: with no `nav_at_edge` (or `nav_at_edge=wrap`), behaviour is unchanged.
+Release notes for each version live in [GitHub Releases](https://github.com/lmilojevicc/herdr-splits.nvim/releases).
 
 ## License
 
