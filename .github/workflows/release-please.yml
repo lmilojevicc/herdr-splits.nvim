@@ -1,0 +1,24 @@
+name: release-please
+
+# Automates releases from conventional commits on main. release-please
+# maintains a "release PR" that accumulates changes; merging it tags the
+# version, bumps `version` in herdr-plugin.toml, and creates a GitHub Release
+# (no CHANGELOG.md — see release-please-config.json).
+#
+# Commit conventions: `feat:` → minor, `fix:`/`perf:` → patch,
+# `BREAKING CHANGE` or `feat!:`/`fix!:` → major. `docs:`/`chore:` do not
+# trigger a release.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
