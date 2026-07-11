@@ -171,7 +171,9 @@ the opposite side:
 
 - If a Herdr pane sits on the opposite side, focus crosses into it — so
   `pane | nvim` wraps `ctrl+l` back to the pane, and
-  `pane | nvim win1 | win2` wraps from win2 to the pane.
+  `pane | nvim win1 | win2` wraps from win2 to the pane. With `nav_at_edge=stop`
+  (see below) this cross-to-opposite-pane is suppressed and the wrap stays
+  within Neovim instead.
 - Otherwise it wraps within Neovim (smart-splits default).
 - Between plain Herdr panes, navigation wraps around at edges too (past the
   last pane → the first).
@@ -190,21 +192,26 @@ Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
 both the Herdr-side and Neovim-side behaviour — no need to configure it
 twice.
 
-**To stop at layout edges instead of wrapping** (for plain Herdr panes), set
-`nav_at_edge` in the same file:
+**To stop at layout edges instead of wrapping**, set `nav_at_edge` in the same
+file. This single switch controls wrap-across-boundary on **both** sides:
 
 ```text
 nav_at_edge=stop
 ```
 
-`wrap` (the default) preserves smart-splits-style wrap-around — pressing past
-the last pane lands on the first. `stop` halts navigation at the edge instead,
-matching tmux-style behaviour. Note: when a pane is zoomed and
-`unzoom_on_nav=false`, the edge flags can't be trusted so `stop` can't be
-detected — navigation proceeds in the requested direction in that case. With the
-default `unzoom_on_nav=true`, pressing toward an edge while zoomed first unzooms
-the pane (so the edge can be detected) and then halts — the pane unzooms even
-though focus doesn't move.
+- **Plain Herdr panes:** `wrap` (the default) wraps to the opposite pane at an
+  edge; `stop` halts.
+- **Neovim edge wrap:** when Neovim's `at_edge='wrap'`, `wrap` (the default)
+  lets the wrap cross to the Herdr pane on the opposite side (e.g. `ctrl+l` from
+  the last nvim split lands on the pane); `stop` keeps the wrap within Neovim
+  (e.g. `ctrl+l` from the last split cycles to the first split instead of
+  leaving Neovim). `at_edge='stop'` halts regardless of `nav_at_edge`.
+
+Note: when a pane is zoomed and `unzoom_on_nav=false`, the edge flags can't be
+trusted so `stop` can't be detected on the plain-pane side — navigation proceeds
+in the requested direction in that case. With the default `unzoom_on_nav=true`,
+pressing toward an edge while zoomed first unzooms the pane (so the edge can be
+detected) and then halts — the pane unzooms even though focus doesn't move.
 
 ## Local development
 

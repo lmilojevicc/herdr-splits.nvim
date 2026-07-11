@@ -194,10 +194,12 @@ function M.move_cursor(direction, opts)
     -- Wrap is allowed from filetype-based sidebars (dbui, neo-tree, ...) so
     -- you can leave them at an edge; only embedded floating overlays stay gated.
     if will_wrap and count == 1 and not win.is_embedded_floating_window() then
-      -- Wrap to the opposite side. If a Herdr pane exists there, cross into
-      -- it (so a pane sitting next to a full-height Neovim group is
-      -- reachable); otherwise wrap within Neovim (smart-splits default).
-      if herdr.current_pane_at_edge(win.reverse_direction[direction]) == false then
+      -- Wrap to the opposite side. If a Herdr pane exists there AND nav_at_edge
+      -- allows wrap-across-boundary (the default), cross into it; otherwise
+      -- wrap within Neovim. nav_at_edge=stop keeps the wrap inside Neovim.
+      if herdr.nav_at_edge() ~= 'stop'
+          and herdr.current_pane_at_edge(win.reverse_direction[direction]) == false
+      then
         herdr.focus_pane(win.reverse_direction[direction])
       else
         vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
