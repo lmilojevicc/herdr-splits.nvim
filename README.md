@@ -190,6 +190,22 @@ Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
 both the Herdr-side and Neovim-side behaviour — no need to configure it
 twice.
 
+**To stop at layout edges instead of wrapping** (for plain Herdr panes), set
+`nav_at_edge` in the same file:
+
+```text
+nav_at_edge=stop
+```
+
+`wrap` (the default) preserves smart-splits-style wrap-around — pressing past
+the last pane lands on the first. `stop` halts navigation at the edge instead,
+matching tmux-style behaviour. Note: when a pane is zoomed and
+`unzoom_on_nav=false`, the edge flags can't be trusted so `stop` can't be
+detected — navigation proceeds in the requested direction in that case. With the
+default `unzoom_on_nav=true`, pressing toward an edge while zoomed first unzooms
+the pane (so the edge can be detected) and then halts — the pane unzooms even
+though focus doesn't move.
+
 ## Local development
 
 Both sides load straight from your clone, so edits take effect immediately
