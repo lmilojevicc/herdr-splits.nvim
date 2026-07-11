@@ -324,7 +324,8 @@ You press C-h in a Herdr pane:
         │   └─ Yes → herdr pane focus --direction → done
         └─ No (at both Neovim AND Herdr edge) →
              apply at_edge behaviour (`wrap` crosses to the opposite Herdr
-             pane if one exists, else wraps within Neovim)
+             pane if one exists and nav_at_edge=wrap (the default), else
+             wraps within Neovim)
 ```
 
 ### Resizing
