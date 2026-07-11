@@ -8,11 +8,16 @@
 #      moving between Neovim splits would incorrectly unzoom the pane.
 # 2. If no (a plain Herdr pane): unzoom if needed, then move Herdr pane focus.
 #    At a layout edge, focus wraps around to the opposite side (smart-splits
-#    style), so navigating past the last pane lands on the first.
+#    style), so navigating past the last pane lands on the first — unless
+#    `nav_at_edge=stop`, in which case it halts at the edge.
 #
 # Auto-unzoom is configurable via `unzoom_on_nav=false` in
 # `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`
 # (same file the Neovim plugin reads). Default: enabled.
+#
+# Edge behaviour for plain Herdr panes is configurable via `nav_at_edge` in
+# the same conf file: `wrap` (default; wraps to the opposite side at an edge)
+# or `stop` (navigation halts at the edge instead of wrapping).
 #
 # Usage: herdr-nav.sh <left|down|up|right>
 
@@ -29,12 +34,17 @@ case "$dir" in
   *) echo "herdr-nav.sh: unknown direction: $dir" >&2; exit 2 ;;
 esac
 
-# Resolve `unzoom_on_nav` from the shared config file (default: enabled).
+# Resolve `unzoom_on_nav` and `nav_at_edge` from the shared config file.
+# Defaults: unzoom enabled, nav_at_edge=wrap (backward compatible).
 unzoom=1
+nav_at_edge=wrap
 config_path="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf}"
 if [ -r "$config_path" ]; then
   if grep -Eq '^[[:space:]]*unzoom_on_nav[[:space:]]*=[[:space:]]*false' "$config_path"; then
     unzoom=0
+  fi
+  if grep -Eq '^[[:space:]]*nav_at_edge[[:space:]]*=[[:space:]]*stop' "$config_path"; then
+    nav_at_edge=stop
   fi
 fi
 
@@ -75,10 +85,15 @@ if printf '%s' "$edges_out" | grep -q '"zoomed"[[:space:]]*:[[:space:]]*true'; t
   fi
 fi
 
-# Move to the neighbor in the requested direction; if we're already at that
-# edge (no neighbor there), wrap around to the opposite side. Skip the wrap
-# check when the edge flags are unreliable (still zoomed, unzoom disabled).
+# Move to the neighbor in the requested direction. When already at the
+# requested edge (no neighbor there): wrap to the opposite side, or — when
+# nav_at_edge=stop — do nothing. Skip the edge check when the flags are
+# unreliable (still zoomed, unzoom disabled); in that case we can't tell
+# whether we're at an edge, so we just focus in the requested direction.
 if [ "$edges_trusted" -eq 1 ] && printf '%s' "$edges_out" | grep -q "\"$dir\"[[:space:]]*:[[:space:]]*true"; then
+  if [ "$nav_at_edge" = stop ]; then
+    exit 0
+  fi
   exec "$herdr" pane focus --direction "$opp" --current
 else
   exec "$herdr" pane focus --direction "$dir" --current

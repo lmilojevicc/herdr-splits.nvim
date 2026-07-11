@@ -171,7 +171,9 @@ the opposite side:
 
 - If a Herdr pane sits on the opposite side, focus crosses into it — so
   `pane | nvim` wraps `ctrl+l` back to the pane, and
-  `pane | nvim win1 | win2` wraps from win2 to the pane.
+  `pane | nvim win1 | win2` wraps from win2 to the pane. With `nav_at_edge=stop`
+  (see below) this cross-to-opposite-pane is suppressed and the wrap stays
+  within Neovim instead.
 - Otherwise it wraps within Neovim (smart-splits default).
 - Between plain Herdr panes, navigation wraps around at edges too (past the
   last pane → the first).
@@ -189,6 +191,27 @@ unzoom_on_nav=false
 Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
 both the Herdr-side and Neovim-side behaviour — no need to configure it
 twice.
+
+**To stop at layout edges instead of wrapping**, set `nav_at_edge` in the same
+file. This single switch controls wrap-across-boundary on **both** sides:
+
+```text
+nav_at_edge=stop
+```
+
+- **Plain Herdr panes:** `wrap` (the default) wraps to the opposite pane at an
+  edge; `stop` halts.
+- **Neovim edge wrap:** when Neovim's `at_edge='wrap'`, `wrap` (the default)
+  lets the wrap cross to the Herdr pane on the opposite side (e.g. `ctrl+l` from
+  the last nvim split lands on the pane); `stop` keeps the wrap within Neovim
+  (e.g. `ctrl+l` from the last split cycles to the first split instead of
+  leaving Neovim). `at_edge='stop'` halts regardless of `nav_at_edge`.
+
+Note: when a pane is zoomed and `unzoom_on_nav=false`, the edge flags can't be
+trusted so `stop` can't be detected on the plain-pane side — navigation proceeds
+in the requested direction in that case. With the default `unzoom_on_nav=true`,
+pressing toward an edge while zoomed first unzooms the pane (so the edge can be
+detected) and then halts — the pane unzooms even though focus doesn't move.
 
 ## Local development
 
@@ -301,7 +324,8 @@ You press C-h in a Herdr pane:
         │   └─ Yes → herdr pane focus --direction → done
         └─ No (at both Neovim AND Herdr edge) →
              apply at_edge behaviour (`wrap` crosses to the opposite Herdr
-             pane if one exists, else wraps within Neovim)
+             pane if one exists and nav_at_edge=wrap (the default), else
+             wraps within Neovim)
 ```
 
 ### Resizing
@@ -374,16 +398,7 @@ lazy actually updates the plugin, instead of on every Neovim startup:
 `herdr plugin install lmilojevicc/herdr-splits.nvim` to refresh the
 Herdr-side scripts.
 
-**0.2.x → 0.3.0 migration:** the new default `ignored_filetypes` and `ignored_buftypes` are union-merged with your existing config (you keep what you pass; we append the new defaults). Two new config fields are available: `floating_zindex_max` (default 50; threshold below which a float is classified as an embedded sidebar) and `ignore_previewwindows` (default false; opt-in to also treat preview-window buffers as sidebars, covering dadbod's `.dbout`). New runtime API: `add_ignored_filetype(name)` and `add_ignored_buftype(name)` (both de-duped). New user command: `:checkhealth herdr-splits` (Neovim ≥ 0.10).
-
-**Zoom behaviour refinement (0.3.0):** herdr-splits auto-unzooms when crossing from Neovim into a sibling Herdr pane (so the target pane is visible), and does not unzoom when moving between Neovim splits. The `unzoom_on_nav` conf-file knob (default: enabled) controls this — set `unzoom_on_nav=false` in `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf` to disable.
-
-**0.4.0 — zoom & wrap-around navigation:**
-
-- **Herdr-pane ↔ Herdr-pane nav while zoomed** now unzooms then focuses the neighbour (previously the source pane stayed zoomed, because the Herdr-side `herdr-nav.sh` never unzoomed). The unzoom runs only for plain Herdr panes — Neovim panes forward the chord untouched, so moving between Neovim splits no longer unzooms (fixes a regression from 0.3.0).
-- **Wrap-around at layout edges** (smart-splits style): pressing past the last Herdr pane wraps to the first; at both the Neovim and Herdr edge, the default `wrap` crosses to the Herdr pane on the opposite side whenever one exists (e.g. `pane | nvim` and `pane | nvim win1 | win2` wrap `ctrl+l` back to the pane), falling back to the in-Neovim wrap when there is no sibling. Works whether or not the pane is zoomed.
-- **Wrap works from sidebars** (dadbod-ui, neo-tree, quickfix, …): filetype-based sidebars can now wrap out at an edge instead of being trapped; only embedded floating overlays remain gated. `split`-at-edge and Herdr resize delegation are still skipped from sidebars.
-- `unzoom_on_nav=false` still disables all auto-unzoom (in which case zoomed edges are not trusted for the wrap decision).
+Release notes for each version live in [GitHub Releases](https://github.com/lmilojevicc/herdr-splits.nvim/releases).
 
 ## License
 
