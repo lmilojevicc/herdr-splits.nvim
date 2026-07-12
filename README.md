@@ -7,6 +7,7 @@ Inspired by [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim
 ## Features
 
 - **Seamless navigation**: Same keys work in Neovim and plain shells — Herdr forwards them to Neovim when appropriate, Neovim delegates to Herdr at edges.
+- **Configurable navigation keys**: The Herdr-to-Neovim chords default to `<C-h/j/k/l>` and can be changed without patching the plugin.
 - **Seamless resizing**: `<M-h/j/k/l>` resizes Neovim splits natively, delegates to Herdr when a window fills the terminal.
 - **at_edge behaviours**: `wrap` (default), `stop`, `split`, or a custom function.
 - **Plugin-aware**: Ignores snacks/neo-tree/dadbod-ui/aerial sidebars and embedded floats (zindex < 50) by default — your keybinds never get trapped inside a picker.
@@ -148,6 +149,32 @@ key = "alt+l"
 type = "plugin_action"
 command = "herdr-splits.resize-right"
 ```
+
+#### Use Alt+Arrow without Ctrl+h/j/k/l mappings
+
+The Herdr actions forward `<C-h/j/k/l>` into Neovim by default. To use
+`Alt+Arrow` end to end, create `herdr-splits.conf` in the plugin config
+directory (print it with `herdr plugin config-dir herdr-splits`):
+
+```text
+nav_key_left=alt+left
+nav_key_down=alt+down
+nav_key_up=alt+up
+nav_key_right=alt+right
+```
+
+Bind the Herdr `nav-*` actions to `alt+left/down/up/right`, then replace the
+Neovim navigation entries with:
+
+```lua
+{ '<M-Left>',  function() require('herdr-splits').move_cursor_left() end,  desc = 'Navigate left' },
+{ '<M-Down>',  function() require('herdr-splits').move_cursor_down() end,  desc = 'Navigate down' },
+{ '<M-Up>',    function() require('herdr-splits').move_cursor_up() end,    desc = 'Navigate up' },
+{ '<M-Right>', function() require('herdr-splits').move_cursor_right() end, desc = 'Navigate right' },
+```
+
+Each `nav_key_*` value uses Herdr's `pane send-keys` chord syntax. Unset values
+keep their `<C-h/j/k/l>` defaults.
 
 > **Note for macOS**: Terminals treat Option as a special character modifier by default. You need to set Option = Alt/Meta:
 >
