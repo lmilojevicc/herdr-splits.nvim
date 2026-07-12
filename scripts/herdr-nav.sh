@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Herdr navigation helper — used by herdr keybinds for seamless two-way nav.
 #
-# When a navigation key (ctrl+h/j/k/l) is pressed in Herdr:
+# When a navigation key is pressed in Herdr:
 # 1. Check if the focused pane is running Neovim in the foreground.
 #    - If yes: forward the key chord into that pane. The Neovim plugin owns
 #      in-split movement, edge crossing, and unzoom — do NOT unzoom here, or
@@ -27,10 +27,10 @@ dir="${1:?usage: herdr-nav.sh <left|down|up|right>}"
 herdr="${HERDR_BIN_PATH:-herdr}"
 
 case "$dir" in
-  left)  key="ctrl+h"; opp="right" ;;
-  down)  key="ctrl+j"; opp="up" ;;
-  up)    key="ctrl+k"; opp="down" ;;
-  right) key="ctrl+l"; opp="left" ;;
+  left)  key="ctrl+h"; config_key="nav_key_left"; opp="right" ;;
+  down)  key="ctrl+j"; config_key="nav_key_down"; opp="up" ;;
+  up)    key="ctrl+k"; config_key="nav_key_up"; opp="down" ;;
+  right) key="ctrl+l"; config_key="nav_key_right"; opp="left" ;;
   *) echo "herdr-nav.sh: unknown direction: $dir" >&2; exit 2 ;;
 esac
 
@@ -40,6 +40,10 @@ unzoom=1
 nav_at_edge=wrap
 config_path="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf}"
 if [ -r "$config_path" ]; then
+  configured_key=$(sed -n -E "s/^[[:space:]]*${config_key}[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\\1/p" "$config_path" | tail -n 1)
+  if [ -n "$configured_key" ]; then
+    key="$configured_key"
+  fi
   if grep -Eq '^[[:space:]]*unzoom_on_nav[[:space:]]*=[[:space:]]*false' "$config_path"; then
     unzoom=0
   fi
