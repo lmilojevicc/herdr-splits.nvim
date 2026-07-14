@@ -213,6 +213,26 @@ in the requested direction in that case. With the default `unzoom_on_nav=true`,
 pressing toward an edge while zoomed first unzooms the pane (so the edge can be
 detected) and then halts — the pane unzooms even though focus doesn't move.
 
+**To remap the keys forwarded into Neovim**, set `nav_key_<dir>` and `resize_key_<dir>` in the same file. By default the scripts forward `ctrl+h/j/k/l` for navigation and `alt+h/j/k/l` for resizing — the chords the documented Neovim keymaps bind. Override them only if your Neovim keymaps use different keys (for example, you navigate with Alt+Arrows instead of Ctrl+HJKL):
+
+```text
+# navigation (defaults: ctrl+h/j/k/l)
+nav_key_left=alt+left
+nav_key_down=alt+down
+nav_key_up=alt+up
+nav_key_right=alt+right
+
+# resizing (defaults: alt+h/j/k/l)
+resize_key_left=alt+shift+left
+resize_key_down=alt+shift+down
+resize_key_up=alt+shift+up
+resize_key_right=alt+shift+right
+```
+
+- Use Herdr chord notation — lowercase, `+`-separated, as accepted by `herdr pane send-keys` (e.g. `ctrl+h`, `alt+j`, `alt+left`).
+- Any key left unset keeps its default.
+- The chord you set here must match the Neovim keymap that catches it: `alt+left` in this file corresponds to `<M-Left>` in your `vim.keymap.set`. They are the same key written two ways, so keep them in sync.
+
 ## Local development
 
 Both sides load straight from your clone, so edits take effect immediately
