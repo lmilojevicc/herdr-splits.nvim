@@ -18,12 +18,22 @@ amount="${2:-0.03}"
 herdr="${HERDR_BIN_PATH:-herdr}"
 
 case "$dir" in
-  left)  key="alt+h" ;;
-  down)  key="alt+j" ;;
-  up)    key="alt+k" ;;
-  right) key="alt+l" ;;
+  left)  key="alt+h"; config_key="resize_key_left" ;;
+  down)  key="alt+j"; config_key="resize_key_down" ;;
+  up)    key="alt+k"; config_key="resize_key_up" ;;
+  right) key="alt+l"; config_key="resize_key_right" ;;
   *) echo "herdr-resize.sh: unknown direction: $dir" >&2; exit 2 ;;
 esac
+
+# Resolve the forward chord from the shared config file.
+# Unset values keep the alt+hjkl default.
+config_path="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf}"
+if [ -r "$config_path" ]; then
+  configured_key=$(sed -n -E "s/^[[:space:]]*${config_key}[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\\1/p" "$config_path" | tail -n 1)
+  if [ -n "$configured_key" ]; then
+    key="$configured_key"
+  fi
+fi
 
 # Get focused pane ID from server
 pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"\s*:\s*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
