@@ -77,6 +77,12 @@ herdr plugin link /path/to/herdr-splits
       floating_zindex_max = 50,       -- floats with zindex < this are treated as embedded sidebars
       ignore_previewwindows = false,  -- opt-in: also treat previewwindow windows (e.g. .dbout) as sidebars
       -- auto_sync_herdr = true,      -- opt-in: sync Herdr-side scripts on update
+      -- Managed keys — written to the generated herdr-splits.conf so the
+      -- Herdr-side scripts agree. Pass Neovim notation (e.g. <M-Left>).
+      nav_keys    = { left = '<C-h>', down = '<C-j>', up = '<C-k>', right = '<C-l>' },
+      resize_keys = { left = '<M-h>', down = '<M-j>', up = '<M-k>', right = '<M-l>' },
+      unzoom_on_nav = true,   -- auto-unzoom when navigating away from a zoomed pane
+      nav_at_edge    = 'wrap', -- 'wrap' | 'stop' — Herdr pane-boundary wrap (distinct from at_edge)
     })
   end,
   keys = {
@@ -180,24 +186,28 @@ the opposite side:
 - Wrap works even when you're on a sidebar (dbui, neo-tree, quickfix, ...),
   so you can leave it at an edge; only embedded floating overlays are gated.
 
-**To disable auto-unzoom entirely**, create `herdr-splits.conf` in the plugin
-config directory (default `~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`;
-print it with `herdr plugin config-dir herdr-splits`):
+**To disable auto-unzoom entirely**, pass `unzoom_on_nav = false` to `setup()`:
 
-```text
-unzoom_on_nav=false
+```lua
+require('herdr-splits').setup({ unzoom_on_nav = false })
 ```
 
-Set `HERDR_SPLITS_CONFIG` to override the path. This single file controls
-both the Herdr-side and Neovim-side behaviour — no need to configure it
-twice.
+These options are written to a generated `herdr-splits.conf` (default
+`~/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf`; print the
+path with `herdr plugin config-dir herdr-splits`) so the Herdr-side scripts
+agree — you configure them once, from `setup()`. **Do not hand-edit that
+file:** it is regenerated on every `setup()`. Any values already present are
+adopted once the first time `setup()` runs after an upgrade, then
+overwritten thereafter. Set `HERDR_SPLITS_CONFIG` to override the path on
+both sides.
 
-**To stop at layout edges instead of wrapping**, set `nav_at_edge` in the same
-file. This single switch controls wrap-across-boundary on **both** sides:
+**To stop at layout edges instead of wrapping**, pass `nav_at_edge = 'stop'`:
 
-```text
-nav_at_edge=stop
+```lua
+require('herdr-splits').setup({ nav_at_edge = 'stop' })
 ```
+
+This single switch controls wrap-across-boundary on **both** sides:
 
 - **Plain Herdr panes:** `wrap` (the default) wraps to the opposite pane at an
   edge; `stop` halts.
@@ -207,31 +217,41 @@ nav_at_edge=stop
   (e.g. `ctrl+l` from the last split cycles to the first split instead of
   leaving Neovim). `at_edge='stop'` halts regardless of `nav_at_edge`.
 
+Note: `at_edge` (Neovim window-edge behaviour: `wrap`/`stop`/`split`/function)
+and `nav_at_edge` (Herdr pane-boundary wrap: `wrap`/`stop`) are two different
+things despite the shared name — `at_edge` is Neovim-side only and is not
+written to the conf.
+
 Note: when a pane is zoomed and `unzoom_on_nav=false`, the edge flags can't be
 trusted so `stop` can't be detected on the plain-pane side — navigation proceeds
 in the requested direction in that case. With the default `unzoom_on_nav=true`,
 pressing toward an edge while zoomed first unzooms the pane (so the edge can be
 detected) and then halts — the pane unzooms even though focus doesn't move.
 
-**To remap the keys forwarded into Neovim**, set `nav_key_<dir>` and `resize_key_<dir>` in the same file. By default the scripts forward `ctrl+h/j/k/l` for navigation and `alt+h/j/k/l` for resizing — the chords the documented Neovim keymaps bind. Override them only if your Neovim keymaps use different keys (for example, you navigate with Alt+Arrows instead of Ctrl+HJKL):
+**To remap the keys forwarded into Neovim**, pass `nav_keys` / `resize_keys`
+to `setup()` in Neovim notation (e.g. `<M-Left>`). Override only the
+directions you rebind; the rest keep their defaults. By default the scripts
+forward `ctrl+h/j/k/l` for navigation and `alt+h/j/k/l` for resizing — the
+chords the documented Neovim keymaps bind:
 
-```text
-# navigation (defaults: ctrl+h/j/k/l)
-nav_key_left=alt+left
-nav_key_down=alt+down
-nav_key_up=alt+up
-nav_key_right=alt+right
-
-# resizing (defaults: alt+h/j/k/l)
-resize_key_left=alt+shift+left
-resize_key_down=alt+shift+down
-resize_key_up=alt+shift+up
-resize_key_right=alt+shift+right
+```lua
+require('herdr-splits').setup({
+  nav_keys    = { left = '<M-Left>', down = '<M-Down>', up = '<M-Up>', right = '<M-Right>' },
+  resize_keys = { left = '<M-S-Left>', down = '<M-S-Down>', up = '<M-S-Up>', right = '<M-S-Right>' },
+})
 ```
 
-- Use Herdr chord notation — lowercase, `+`-separated, as accepted by `herdr pane send-keys` (e.g. `ctrl+h`, `alt+j`, `alt+left`).
-- Any key left unset keeps its default.
-- The chord you set here must match the Neovim keymap that catches it: `alt+left` in this file corresponds to `<M-Left>` in your `vim.keymap.set`. They are the same key written two ways, so keep them in sync.
+- Pass Neovim notation in `setup()` (`<C-h>`, `<M-Left>`); it is translated to the Herdr chord notation (`ctrl+h`, `alt+left`) the generated conf writes and `herdr pane send-keys` accepts.
+- Any direction left unset keeps its default.
+- The chord forwarded into Neovim must match the Neovim keymap that catches it: `<M-Left>` in `setup()` is the same key `alt+left` the script forwards, so keep your `vim.keymap.set` in sync with `nav_keys`.
+
+> **Eager load required for custom keys.** The generated conf is written by
+> `setup()`, so custom `nav_keys`/`resize_keys` need `setup()` to run eagerly
+> or at `VeryLazy` — do **not** lazy-load this plugin *only* from the same
+> custom key mappings it must publish. Otherwise the conf carrying your custom
+> chords isn't written before Herdr forwards them, and those keys can't reach
+> Neovim to trigger the lazy load. The recommended spec above already uses
+> `event = 'VeryLazy'`.
 
 ## Local development
 
@@ -382,7 +402,7 @@ Detected automatically through environment variables Herdr injects into every pa
 | Resizing                    | ✗                    | ✓                            |
 | at_edge behaviours          | ✗                    | wrap / stop / split / custom |
 | Count prefix                | ✗                    | ✓ (3<C-h> = move 3 left)     |
-| Auto-unzoom + wrap-around       | ✗                    | ✓                            |
+| Auto-unzoom + wrap-around   | ✗                    | ✓                            |
 | Floating window handling    | ✗                    | ✓                            |
 | Herdr plugin (for keybinds) | ✓                    | ✓                            |
 | Neovim plugin               | ✓                    | ✓                            |

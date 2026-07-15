@@ -38,7 +38,7 @@ esac
 # Defaults: unzoom enabled, nav_at_edge=wrap (backward compatible).
 unzoom=1
 nav_at_edge=wrap
-config_path="${HERDR_SPLITS_CONFIG:-$HOME/.config/herdr/plugins/config/herdr-splits/herdr-splits.conf}"
+config_path="${HERDR_SPLITS_CONFIG:-${HERDR_PLUGIN_CONFIG_DIR:-$HOME/.config/herdr/plugins/config/herdr-splits}/herdr-splits.conf}"
 if [ -r "$config_path" ]; then
   configured_key=$(sed -n -E "s/^[[:space:]]*${config_key}[[:space:]]*=[[:space:]]*([^[:space:]#]+).*$/\\1/p" "$config_path" | tail -n 1)
   if [ -n "$configured_key" ]; then

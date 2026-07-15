@@ -105,57 +105,21 @@ function M.unzoom()
   return code == 0
 end
 
----Path to the shared herdr-splits config file (same file the Herdr-side
----scripts read). Honors HERDR_SPLITS_CONFIG and XDG_CONFIG_HOME.
----@return string
-local function conf_path()
-  local xdg = vim.env.XDG_CONFIG_HOME
-  local base
-  if xdg and xdg:sub(1, 1) == '/' then
-    base = xdg .. '/herdr/plugins/config/herdr-splits'
-  else
-    base = (vim.env.HOME or '~') .. '/.config/herdr/plugins/config/herdr-splits'
-  end
-  return vim.env.HERDR_SPLITS_CONFIG or (base .. '/herdr-splits.conf')
-end
-
----Scan the shared config file for a line matching `pattern`.
----Returns true on first match; false if the file is missing or no line matches.
----@param pattern string Lua pattern matched against each whole line
----@return boolean
-local function conf_matches(pattern)
-  local f = io.open(conf_path(), 'r')
-  if not f then
-    return false
-  end
-  for line in f:lines() do
-    if line:match(pattern) then
-      f:close()
-      return true
-    end
-  end
-  f:close()
-  return false
-end
-
 ---Check whether auto-unzoom is enabled.
----Reads `unzoom_on_nav` from the shared config file (default: enabled).
+---Reads `config.unzoom_on_nav` (resolved from setup(); default: enabled).
 ---@return boolean
 function M.unzoom_enabled()
-  return not conf_matches('^%s*unzoom_on_nav%s*=%s*false')
+  return config.unzoom_on_nav ~= false
 end
 
----Edge-wrap behavior across the Herdr pane boundary, read from the shared
----config file (same file the Herdr-side scripts read). `stop` suppresses
----wrap-across-boundary on both the plain-pane side (handled by the Herdr
----script) and the Neovim edge-wrap side (handled here). Anything else,
----including a missing file, defaults to `wrap`.
+---Edge-wrap behavior across the Herdr pane boundary, read from the resolved
+---in-memory config (the same value written to the shared conf that the
+---Herdr-side scripts read). `stop` suppresses wrap-across-boundary on both
+---the plain-pane side (handled by the Herdr script) and the Neovim
+---edge-wrap side (handled here). Anything else defaults to `wrap`.
 ---@return '"wrap"'|'"stop"'
 function M.nav_at_edge()
-  if conf_matches('^%s*nav_at_edge%s*=%s*stop') then
-    return 'stop'
-  end
-  return 'wrap'
+  return config.nav_at_edge == 'stop' and 'stop' or 'wrap'
 end
 
 ---Resize the current Herdr pane in the given direction.
