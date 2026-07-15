@@ -79,6 +79,10 @@ local conf = require('herdr-splits.conf')
 function M.setup(opts)
   opts = opts or {}
 
+  -- Apply herdr_bin from opts before the first conf.path() resolution so the
+  -- documented precedence (config.herdr_bin -> HERDR_BIN_PATH -> 'herdr') holds.
+  if opts.herdr_bin ~= nil then M.herdr_bin = opts.herdr_bin end
+
   -- Managed opts: translate user chords nvim -> herdr, capture only what was passed.
   local user = {}
   if opts.nav_keys then
