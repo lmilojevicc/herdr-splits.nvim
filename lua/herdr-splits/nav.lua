@@ -13,34 +13,13 @@ local function is_sidebar()
   return win.is_ignored_or_preview() or win.is_embedded_floating_window()
 end
 
----Split a new Neovim window at the edge in the given direction.
----Temporarily overrides splitright/splitbelow to place the new window correctly.
+---Split a new Neovim window using the user's placement preferences.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'
 local function split_edge(direction)
   if direction == 'left' or direction == 'right' then
-    local orig_splitright = vim.opt.splitright:get()
-    if direction == 'left' then
-      vim.opt.splitright = false
-      vim.cmd('vsp')
-      vim.opt.splitright = orig_splitright
-    else
-      vim.cmd('vsp')
-      if orig_splitright then
-        vim.cmd('wincmd h')
-      end
-    end
+    vim.cmd('vsp')
   else
-    local orig_splitbelow = vim.opt.splitbelow:get()
-    if direction == 'up' then
-      vim.opt.splitbelow = false
-      vim.cmd('sp')
-      vim.opt.splitbelow = orig_splitbelow
-    else
-      vim.cmd('sp')
-      if orig_splitbelow then
-        vim.cmd('wincmd k')
-      end
-    end
+    vim.cmd('sp')
   end
 end
 
