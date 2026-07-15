@@ -68,7 +68,8 @@ local conf = require('herdr-splits.conf')
 
 ---Apply user configuration on top of defaults and publish the managed keys
 ---to the shared `herdr-splits.conf` (so the Herdr-side scripts agree).
----Idempotent — calling again merges into existing config.
+---Idempotent in outcome: managed keys (nav_keys/resize_keys/unzoom_on_nav/nav_at_edge)
+---rebuild from defaults + opts each call; non-managed opts merge into existing config.
 ---
 ---Managed keys (nav_keys/resize_keys/unzoom_on_nav/nav_at_edge) resolve with
 ---precedence: defaults -> existing conf value (adopt-once) -> explicit opt.
