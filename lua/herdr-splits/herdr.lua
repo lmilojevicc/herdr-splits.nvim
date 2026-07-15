@@ -51,11 +51,20 @@ function M.current_pane_at_edge(direction)
   end
 
   local ok, data = pcall(vim.json.decode, stdout)
-  if not ok or not data or not data.result or not data.result.edges then
+  if
+    not ok
+    or type(data) ~= 'table'
+    or type(data.result) ~= 'table'
+    or type(data.result.edges) ~= 'table'
+  then
     return nil
   end
 
-  return data.result.edges[edge_key] == true
+  local at_edge = data.result.edges[edge_key]
+  if type(at_edge) ~= 'boolean' then
+    return nil
+  end
+  return at_edge
 end
 
 ---Check if the current Herdr pane is zoomed.
@@ -73,11 +82,20 @@ function M.current_pane_is_zoomed()
   end
 
   local ok, data = pcall(vim.json.decode, stdout)
-  if not ok or not data or not data.result or not data.result.layout then
+  if
+    not ok
+    or type(data) ~= 'table'
+    or type(data.result) ~= 'table'
+    or type(data.result.layout) ~= 'table'
+  then
     return nil
   end
 
-  return data.result.layout.zoomed == true
+  local zoomed = data.result.layout.zoomed
+  if type(zoomed) ~= 'boolean' then
+    return nil
+  end
+  return zoomed
 end
 
 ---Focus a Herdr pane in the given direction.
