@@ -29,6 +29,9 @@ lua/herdr-splits/              Neovim plugin source
   health.lua                   :checkhealth herdr-splits
 scripts/herdr-nav.sh           Herdr-side navigation action
 scripts/herdr-resize.sh        Herdr-side resize action
+scripts/minimal_init.lua       Isolated Neovim test bootstrap
+tests/                         mini.test suites
+Makefile                       Local and CI validation commands
 herdr-plugin.toml              Herdr plugin manifest (actions + metadata)
 ```
 
@@ -77,7 +80,18 @@ After changing `scripts/*.sh` or `herdr-plugin.toml`, run
 
 ## Validation
 
-There is no automated test suite yet, so changes must be validated manually:
+The Make targets initialize and update the pinned test dependency automatically.
+To prepare it separately, run `make deps`.
+
+Run the automated checks with:
+
+```bash
+make test         # isolated mini.test suite in headless Neovim
+make check-shell  # bash syntax checks for both shipped scripts
+make check        # all of the above
+```
+
+Cross-pane behaviour still requires manual validation in a Herdr session:
 
 1. Load the plugin in Neovim inside a Herdr session (`HERDR_ENV=1`).
 2. Run `:checkhealth herdr-splits` and confirm it reports no failures.
@@ -87,8 +101,6 @@ There is no automated test suite yet, so changes must be validated manually:
    - count prefixes (e.g. `3<C-h>`)
    - floating windows and embedded-sidebar floats
    - auto-unzoom when crossing into a sibling Herdr pane
-4. For bash changes, run `bash -n scripts/herdr-nav.sh` /
-   `bash -n scripts/herdr-resize.sh` to catch syntax errors.
 
 ## Submitting changes
 
