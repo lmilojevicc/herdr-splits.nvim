@@ -245,6 +245,14 @@ require('herdr-splits').setup({
 - Any direction left unset keeps its default.
 - The chord forwarded into Neovim must match the Neovim keymap that catches it: `<M-Left>` in `setup()` is the same key `alt+left` the script forwards, so keep your `vim.keymap.set` in sync with `nav_keys`.
 
+> **Eager load required for custom keys.** The generated conf is written by
+> `setup()`, so custom `nav_keys`/`resize_keys` need `setup()` to run eagerly
+> or at `VeryLazy` — do **not** lazy-load this plugin *only* from the same
+> custom key mappings it must publish. Otherwise the conf carrying your custom
+> chords isn't written before Herdr forwards them, and those keys can't reach
+> Neovim to trigger the lazy load. The recommended spec above already uses
+> `event = 'VeryLazy'`.
+
 ## Local development
 
 Both sides load straight from your clone, so edits take effect immediately
@@ -394,7 +402,7 @@ Detected automatically through environment variables Herdr injects into every pa
 | Resizing                    | ✗                    | ✓                            |
 | at_edge behaviours          | ✗                    | wrap / stop / split / custom |
 | Count prefix                | ✗                    | ✓ (3<C-h> = move 3 left)     |
-| Auto-unzoom + wrap-around       | ✗                    | ✓                            |
+| Auto-unzoom + wrap-around   | ✗                    | ✓                            |
 | Floating window handling    | ✗                    | ✓                            |
 | Herdr plugin (for keybinds) | ✓                    | ✓                            |
 | Neovim plugin               | ✓                    | ✓                            |

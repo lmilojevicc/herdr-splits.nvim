@@ -17,19 +17,65 @@ local SPECIAL = {
   ['end'] = 'end', pageup = 'pageup', pagedown = 'pagedown',
 }
 
+-- Marker line stamped into every generated conf. Its presence means the file
+-- is the plugin's own output: setup() is authoritative, so read_managed() does
+-- NOT adopt it back (removing an opt reverts to the default on the next start).
+local MARKER = '# herdr-splits-generated-v1'
+
+local uv = vim.uv or vim.loop
+
+-- Lazily-resolved cache of the shared config path, so setup() shells out to
+-- `herdr plugin config-dir` at most once per process.
+local resolved_path
+
+---Resolve the herdr binary: a config.herdr_bin override (when the config
+---module is loaded), then HERDR_BIN_PATH, then 'herdr'. pcall-required so
+---conf.lua never hard-requires config.lua at load time (cycle-safe).
+---@return string
+local function resolve_herdr_bin()
+  local ok, cfg = pcall(require, 'herdr-splits.config')
+  if ok and cfg.herdr_bin then return cfg.herdr_bin end
+  return vim.env.HERDR_BIN_PATH or 'herdr'
+end
+
+---Best-effort `herdr plugin config-dir herdr-splits` query. Returns the
+---directory printed by herdr (trimmed), or nil on any failure / empty output.
+---@return string|nil
+local function query_config_dir()
+  local ok, obj = pcall(vim.system, { resolve_herdr_bin(), 'plugin', 'config-dir', 'herdr-splits' }, { text = true })
+  if not ok or not obj then return nil end
+  local wok, res = pcall(obj.wait, obj)
+  if not wok or not res or res.code ~= 0 then return nil end
+  local out = (res.stdout or ''):gsub('^%s+', ''):gsub('%s+$', '')
+  return out ~= '' and out or nil
+end
+
 ---Path to the shared herdr-splits config file (same file the Herdr-side
----scripts read). Honors HERDR_SPLITS_CONFIG and XDG_CONFIG_HOME. Resolves
----identically to the scripts' `$HERDR_PLUGIN_CONFIG_DIR/herdr-splits.conf`
----in the default case.
+---scripts read). Precedence: (1) HERDR_SPLITS_CONFIG; (2) HERDR_PLUGIN_CONFIG_DIR
+---+ `/herdr-splits.conf`; (3) `herdr plugin config-dir herdr-splits` (via the
+---herdr binary) + `/herdr-splits.conf`; (4) XDG_CONFIG_HOME / ~/.config
+---fallback. Resolved once and cached, so setup() shells out at most once.
 ---@return string
 function M.path()
+  if resolved_path then return resolved_path end
   if vim.env.HERDR_SPLITS_CONFIG and vim.env.HERDR_SPLITS_CONFIG ~= '' then
-    return vim.env.HERDR_SPLITS_CONFIG
+    resolved_path = vim.env.HERDR_SPLITS_CONFIG
+    return resolved_path
+  end
+  if vim.env.HERDR_PLUGIN_CONFIG_DIR and vim.env.HERDR_PLUGIN_CONFIG_DIR ~= '' then
+    resolved_path = vim.env.HERDR_PLUGIN_CONFIG_DIR .. '/herdr-splits.conf'
+    return resolved_path
+  end
+  local dir = query_config_dir()
+  if dir then
+    resolved_path = dir .. '/herdr-splits.conf'
+    return resolved_path
   end
   local xdg = vim.env.XDG_CONFIG_HOME
   local base = (xdg and xdg:sub(1, 1) == '/') and xdg
       or ((vim.env.HOME or '~') .. '/.config')
-  return base .. '/herdr/plugins/config/herdr-splits/herdr-splits.conf'
+  resolved_path = base .. '/herdr/plugins/config/herdr-splits/herdr-splits.conf'
+  return resolved_path
 end
 
 ---Translate a Neovim key notation (e.g. `<C-h>`, `<M-Left>`, `h`) into the
@@ -56,16 +102,25 @@ function M.to_herdr(nvim_key)
   return table.concat(mods, '+')
 end
 
----Parse the shared config file for the 10 managed keys only. Returns
----`{ nav_keys={…}, resize_keys={…}, unzoom_on_nav=bool, nav_at_edge='wrap'|'stop' }`
----with only the keys present in the file set; last occurrence wins (matches
----the scripts' `tail -n 1`). Empty table if the file is missing.
----@return table
+---Parse the shared config file for the managed keys only. When the file
+---carries the generated MARKER it is the plugin's own output and is NOT read
+---back (setup() is authoritative — removing an opt reverts to default). When
+---the MARKER is absent (a legacy/hand-edited conf) the managed values are
+---parsed and adopted once; the second return value is true only when at
+---least one managed value was found, so the caller can emit a one-time
+---migration notice. Returns `({}, false)` for a missing/marker-tagged file;
+---last occurrence wins (matches the scripts' `tail -n 1`).
+---@return table values, boolean adopted
 function M.read_managed()
   local f = io.open(M.path(), 'r')
-  if not f then return {} end
+  if not f then return {}, false end
   local out = { nav_keys = {}, resize_keys = {} }
   for line in f:lines() do
+    -- Generated marker anywhere => our own output; do not adopt it back.
+    if line:match('^%s*' .. vim.pesc(MARKER) .. '%s*$') then
+      f:close()
+      return {}, false
+    end
     local k, v = line:match('^%s*([%w_]+)%s*=%s*([^%s#]+)')
     if k and v then
       local dir = k:match('^nav_key_(%a+)$')
@@ -84,25 +139,34 @@ function M.read_managed()
     end
   end
   f:close()
-  return out
+  local adopted = false
+  for _, t in pairs({ out.nav_keys, out.resize_keys }) do
+    for _ in pairs(t) do adopted = true; break end
+  end
+  if out.unzoom_on_nav ~= nil or out.nav_at_edge ~= nil then adopted = true end
+  return out, adopted
 end
 
 ---Write the full managed key set to the shared config with a generated-file
----header, atomically (temp file + os.rename) so a script never observes a
----partial write. Returns (true, nil) on success or (false, err) on failure;
----callers wrap in pcall so a write failure never crashes startup.
+---header (including the MARKER), atomically via a unique same-dir temp +
+---os.rename so a script never observes a partial write and two concurrent
+---Neovim instances don't share a temp inode. Skips the write entirely when the
+---content is unchanged (preserves mtime, reduces multi-instance contention).
+---Returns (true, nil) on success or (false, err) on failure; callers wrap in
+---pcall so a write failure never crashes startup.
 ---@param resolved table resolved managed config (nav_keys, resize_keys, unzoom_on_nav, nav_at_edge)
 ---@return boolean ok, string|nil err
 function M.write(resolved)
   local path = M.path()
-  vim.fn.mkdir(vim.fn.fnamemodify(path, ':h'), 'p')
   local function chord(t, d, def)
     return t[d] or def
   end
   local lines = {
+    MARKER,
     '# herdr-splits plugin config — GENERATED by herdr-splits.nvim setup().',
-    '# Configure via require("herdr-splits").setup({ ... }); do not edit by hand.',
-    '# Any manual edit here is adopted once on the next setup(), then overwritten.',
+    '# Regenerated from defaults + setup() opts on every setup(); do not edit by hand.',
+    '# A headerless/legacy conf is adopted once on migration (see the startup',
+    '# notice), then overwritten thereafter — remove an opt in setup() to revert.',
     'nav_key_left='     .. chord(resolved.nav_keys,    'left',  'ctrl+h'),
     'nav_key_down='     .. chord(resolved.nav_keys,    'down',  'ctrl+j'),
     'nav_key_up='       .. chord(resolved.nav_keys,    'up',    'ctrl+k'),
@@ -114,16 +178,36 @@ function M.write(resolved)
     'unzoom_on_nav='    .. (resolved.unzoom_on_nav == false and 'false' or 'true'),
     'nav_at_edge='      .. (resolved.nav_at_edge == 'stop' and 'stop' or 'wrap'),
   }
-  local tmp = path .. '.tmp'
+  local content = table.concat(lines, '\n') .. '\n'
+
+  -- Skip when unchanged: only when the existing file's bytes match exactly.
+  local existing = io.open(path, 'r')
+  if existing then
+    local prev = existing:read('*a')
+    existing:close()
+    if prev == content then return true end
+  end
+
+  vim.fn.mkdir(vim.fn.fnamemodify(path, ':h'), 'p')
+  -- Unique same-dir temp so os.rename stays same-filesystem (atomic) and two
+  -- Neovim instances don't collide on a shared temp inode.
+  local tmp = path .. '.tmp.' .. vim.fn.getpid() .. '.' .. tostring(uv.hrtime())
   local f, err = io.open(tmp, 'w')
   if not f then
+    pcall(os.remove, tmp)
     vim.notify('herdr-splits: failed to open conf temp file: ' .. tostring(err), vim.log.levels.WARN)
     return false, err
   end
-  f:write(table.concat(lines, '\n') .. '\n')
+  local wok, werr = f:write(content)
   f:close()
+  if not wok then
+    pcall(os.remove, tmp)
+    vim.notify('herdr-splits: failed to write conf temp file: ' .. tostring(werr), vim.log.levels.WARN)
+    return false, werr
+  end
   local ok, rerr = os.rename(tmp, path)
   if not ok then
+    pcall(os.remove, tmp)
     vim.notify('herdr-splits: failed to write conf: ' .. tostring(rerr), vim.log.levels.WARN)
   end
   return ok, rerr

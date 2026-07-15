@@ -17,6 +17,16 @@
 ---@field unzoom_on_nav boolean If true, auto-unzoom when navigating away from a zoomed pane (default true)
 ---@field nav_at_edge 'wrap'|'stop' Herdr pane-boundary wrap behavior (distinct from at_edge, which is the Neovim window-edge behavior)
 
+-- Managed config defaults (Herdr notation). The single source of truth for
+-- the key set written to herdr-splits.conf; deep-copied into M below and into
+-- the setup() merge base so the two cannot drift.
+local managed_defaults = {
+  nav_keys = { left = 'ctrl+h', down = 'ctrl+j', up = 'ctrl+k', right = 'ctrl+l' },
+  resize_keys = { left = 'alt+h', down = 'alt+j', up = 'alt+k', right = 'alt+l' },
+  unzoom_on_nav = true,
+  nav_at_edge = 'wrap',
+}
+
 local M = {
   default_amount = 0.03,
   neovim_amount = 3,
@@ -45,21 +55,13 @@ local M = {
   auto_sync_herdr = false,
   floating_zindex_max = 50,
   ignore_previewwindows = false,
-  -- Managed config: stored in Herdr chord notation; setup() translates user
-  -- Neovim notation and writes these to herdr-splits.conf for the scripts.
-  nav_keys = { left = 'ctrl+h', down = 'ctrl+j', up = 'ctrl+k', right = 'ctrl+l' },
-  resize_keys = { left = 'alt+h', down = 'alt+j', up = 'alt+k', right = 'alt+l' },
-  unzoom_on_nav = true,
-  nav_at_edge = 'wrap',
-}
-
--- Defaults for the managed key set (Herdr notation). Used as the base layer
--- of the adopt-existing merge in setup(). Keep in sync with the public M.* defaults above.
-M._managed_defaults = {
-  nav_keys = { left = 'ctrl+h', down = 'ctrl+j', up = 'ctrl+k', right = 'ctrl+l' },
-  resize_keys = { left = 'alt+h', down = 'alt+j', up = 'alt+k', right = 'alt+l' },
-  unzoom_on_nav = true,
-  nav_at_edge = 'wrap',
+  -- Managed config: deep-copied from managed_defaults (single source).
+  -- Stored in Herdr chord notation; setup() translates user Neovim notation
+  -- and writes these to herdr-splits.conf for the scripts.
+  nav_keys = vim.deepcopy(managed_defaults.nav_keys),
+  resize_keys = vim.deepcopy(managed_defaults.resize_keys),
+  unzoom_on_nav = managed_defaults.unzoom_on_nav,
+  nav_at_edge = managed_defaults.nav_at_edge,
 }
 
 local conf = require('herdr-splits.conf')
@@ -90,13 +92,40 @@ function M.setup(opts)
   if opts.unzoom_on_nav ~= nil then user.unzoom_on_nav = opts.unzoom_on_nav end
   if opts.nav_at_edge ~= nil then user.nav_at_edge = opts.nav_at_edge end
 
-  -- Precedence: defaults -> existing conf (adopt) -> explicit user opts.
-  local resolved = vim.deepcopy(M._managed_defaults)
-  resolved = vim.tbl_deep_extend('force', resolved, conf.read_managed())
+  -- Precedence: defaults -> legacy/headerless conf (adopt once) -> explicit
+  -- user opts. read_managed returns {} (no adoption) once the conf carries
+  -- our generated marker, so removing an opt reverts to the default next start.
+  local existing, migrated = conf.read_managed()
+  local resolved = vim.deepcopy(managed_defaults)
+  resolved = vim.tbl_deep_extend('force', resolved, existing)
   resolved = vim.tbl_deep_extend('force', resolved, user)
 
   M.nav_keys, M.resize_keys = resolved.nav_keys, resolved.resize_keys
   M.unzoom_on_nav, M.nav_at_edge = resolved.unzoom_on_nav, resolved.nav_at_edge
+
+  -- One-time migration notice: a headerless/legacy conf was adopted. Fires
+  -- once — after this setup() the conf carries the marker, so later setups
+  -- don't adopt. Tell the user to move these into setup() to persist them.
+  if migrated then
+    local parts = {}
+    for _, kind in ipairs({ 'nav_keys', 'resize_keys' }) do
+      for dir, v in pairs(existing[kind] or {}) do
+        parts[#parts + 1] = ('%s.%s=%s'):format(kind, dir, v)
+      end
+    end
+    if existing.unzoom_on_nav ~= nil then
+      parts[#parts + 1] = 'unzoom_on_nav=' .. tostring(existing.unzoom_on_nav)
+    end
+    if existing.nav_at_edge ~= nil then
+      parts[#parts + 1] = 'nav_at_edge=' .. existing.nav_at_edge
+    end
+    vim.notify(
+      'herdr-splits: adopted legacy conf values (' .. table.concat(parts, ', ')
+        .. '). Add them to setup() (Neovim notation) to keep them — the conf is '
+        .. 'now regenerated on every setup().',
+      vim.log.levels.INFO
+    )
+  end
 
   -- Non-managed opts (default_amount, at_edge, ignored_filetypes, …) merge as before.
   local other = vim.deepcopy(opts)
