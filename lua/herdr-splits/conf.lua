@@ -196,11 +196,17 @@ function M.write(resolved)
     return false, err
   end
   local wok, werr = f:write(content)
-  f:close()
-  if not wok then
+  -- file:close() flushes buffered output and can itself fail with a delayed
+  -- write error (disk full, NFS, quota). Its result MUST be checked before
+  -- os.rename: otherwise an incomplete temp replaces the live config and the
+  -- atomic-write guarantee is lost. LuaJIT returns true on success or
+  -- (nil, err) on a flush failure — same form as file:write, checked here too.
+  local cok, cerr = f:close()
+  if (not wok) or (not cok) then
+    local why = (not wok) and werr or cerr
     pcall(os.remove, tmp)
-    vim.notify('herdr-splits: failed to write conf temp file: ' .. tostring(werr), vim.log.levels.WARN)
-    return false, werr
+    vim.notify('herdr-splits: failed to write conf temp file: ' .. tostring(why), vim.log.levels.WARN)
+    return false, why
   end
   local ok, rerr = os.rename(tmp, path)
   if not ok then
