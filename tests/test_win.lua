@@ -128,4 +128,11 @@ T['preview windows are ignored only when configured'] = function()
   expect.equality(result, { disabled = false, enabled = true })
 end
 
+T['command-line window is not active in a normal buffer'] = function()
+  local result = child.lua_func(function()
+    return require('herdr-splits.win').is_command_line_window()
+  end)
+  expect.equality(result, false)
+end
+
 return T

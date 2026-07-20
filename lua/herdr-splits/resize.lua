@@ -66,14 +66,16 @@ function M.resize(direction, amount)
   -- Delegate to Herdr ONLY when at both Neovim edges in this dimension
   -- AND the window fills the terminal (full_width or full_height).
   local delegate = false
-  -- Never delegate from inside a sidebar; the ignore list applies to resize too.
+  -- Never delegate from inside a sidebar; the ignore list applies to resize
+  -- too. The command-line window is exempted: it is `nofile` (so it trips this
+  -- rule) yet a full-width cmdwin should still resize the Herdr pane sideways.
   local in_sidebar = win.is_ignored_or_preview()
   if direction == 'left' or direction == 'right' then
     delegate = win.is_full_width() and win.at_left_edge() and win.at_right_edge() and herdr.is_in_session()
   else
     delegate = win.is_full_height() and win.at_top_edge() and win.at_bottom_edge() and herdr.is_in_session()
   end
-  if delegate and in_sidebar then
+  if delegate and in_sidebar and not win.is_command_line_window() then
     delegate = false
   end
 

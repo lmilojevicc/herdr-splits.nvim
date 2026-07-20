@@ -252,4 +252,51 @@ T['delegates normal floats but suppresses embedded, sidebar, and zoomed windows'
   expect.equality(result, { calls = { { 'right', 0.15 } }, current = true })
 end
 
+T['command-line window horizontal resize delegates past the nofile sidebar rule'] = function()
+  local result = child.lua_func(function()
+    local calls = {}
+    local cmdwin = true
+    package.loaded['herdr-splits.win'] = {
+      is_command_line_window = function() return cmdwin end,
+      is_embedded_floating_window = function() return false end,
+      is_floating = function() return false end,
+      is_ignored_or_preview = function() return true end,
+      is_full_width = function() return true end,
+      is_full_height = function() return false end,
+      at_left_edge = function() return true end,
+      at_right_edge = function() return true end,
+      at_top_edge = function() return true end,
+      at_bottom_edge = function() return true end,
+      win_position = function() return 'start' end,
+    }
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return true end,
+      current_pane_is_zoomed = function() return false end,
+      resize_pane = function(direction, amount)
+        calls[#calls + 1] = { direction, amount }
+        return true
+      end,
+    }
+    package.loaded['herdr-splits.resize'] = nil
+    local config = require('herdr-splits.config')
+    config.default_amount = 0.03
+    local resize = require('herdr-splits.resize')
+
+    -- cmdwin + full-width + nofile: horizontal resize delegates to Herdr
+    cmdwin = true
+    resize.resize('left')
+    resize.resize('right', 0.2)
+
+    -- ordinary nofile buffer (not cmdwin): sidebar rule still blocks delegation
+    cmdwin = false
+    resize.resize('left')
+
+    return { calls = calls }
+  end)
+
+  expect.equality(result, {
+    calls = { { 'left', 0.03 }, { 'right', 0.2 } },
+  })
+end
+
 return T

@@ -66,6 +66,22 @@ function M.move_cursor(direction, opts)
     will_wrap = target_winnr == vim.fn.winnr()
   end
 
+  -- Command-line window (q:, q/, q?): Neovim forbids all window commands
+  -- (E11). Never wincmd; at a Neovim screen edge, delegate to Herdr
+  -- (subprocess-safe, does not close the cmdwin); otherwise silent no-op.
+  -- Mirrors smart-splits.nvim PR #464.
+  if win.is_command_line_window() then
+    if will_wrap and herdr.is_in_session() then
+      local at_herdr_edge = herdr.current_pane_at_edge(direction)
+      if at_herdr_edge == false then
+        herdr.focus_pane(direction)
+      elseif at_herdr_edge == true and herdr.nav_at_edge() ~= 'stop' then
+        herdr.focus_pane(win.reverse_direction[direction])
+      end
+    end
+    return
+  end
+
   -- Execute the wincmd
   if will_wrap and count == 1 then
     vim.cmd('wincmd ' .. dir_key)
