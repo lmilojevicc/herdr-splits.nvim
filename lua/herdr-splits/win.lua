@@ -121,6 +121,13 @@ function M.is_ignored_or_preview(winid)
   return false
 end
 
+---Returns true while Neovim's command-line window (q:, q/, q?) is open.
+---Inside it all window commands raise E11, so callers must short-circuit.
+---@return boolean
+function M.is_command_line_window()
+  return vim.fn.getcmdwintype() ~= ''
+end
+
 ---Direction key shorthand for wincmd.
 M.dir_keys = {
   left = 'h',

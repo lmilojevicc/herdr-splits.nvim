@@ -424,4 +424,97 @@ T['wraps through the reverse Herdr neighbor unless nav_at_edge stops it'] = func
   })
 end
 
+T['command-line window delegates to Herdr at the screen edge and never wincmds'] = function()
+  local result = child.lua_func(function()
+    local calls = {}
+    local edge = false
+    local nav_mode = 'wrap'
+    package.loaded['herdr-splits.win'] = {
+      is_command_line_window = function() return true end,
+      is_floating = function() return false end,
+      is_embedded_floating_window = function() return false end,
+      is_ignored_or_preview = function() return false end,
+      dir_keys = { left = 'h', right = 'l', up = 'k', down = 'j' },
+      dir_keys_reverse = { left = 'l', right = 'h', up = 'j', down = 'k' },
+      reverse_direction = { left = 'right', right = 'left', up = 'down', down = 'up' },
+    }
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return true end,
+      current_pane_at_edge = function(direction)
+        calls[#calls + 1] = 'edge:' .. direction
+        return edge
+      end,
+      nav_at_edge = function() return nav_mode end,
+      focus_pane = function(direction)
+        calls[#calls + 1] = 'focus:' .. direction
+        return true
+      end,
+    }
+    package.loaded['herdr-splits.nav'] = nil
+    local nav = require('herdr-splits.nav')
+
+    -- single window: will_wrap is true in every direction, mirroring the
+    -- full-width/bottom command-line window geometry.
+    vim.cmd('only')
+
+    edge = false
+    nav.move_cursor('left')
+    local c1 = vim.deepcopy(calls); calls = {}
+
+    edge = true
+    nav_mode = 'wrap'
+    nav.move_cursor('right')
+    local c2 = vim.deepcopy(calls); calls = {}
+
+    nav_mode = 'stop'
+    nav.move_cursor('right')
+    local c3 = vim.deepcopy(calls)
+
+    return { neighbor = c1, wrap_reverse = c2, stop_noop = c3 }
+  end)
+
+  expect.equality(result, {
+    neighbor = { 'edge:left', 'focus:left' },
+    wrap_reverse = { 'edge:right', 'focus:left' },
+    stop_noop = { 'edge:right' },
+  })
+end
+
+T['command-line window no-ops silently when not at a screen edge'] = function()
+  local result = child.lua_func(function()
+    package.loaded['herdr-splits.win'] = {
+      is_command_line_window = function() return true end,
+      is_floating = function() return false end,
+      is_embedded_floating_window = function() return false end,
+      is_ignored_or_preview = function() return false end,
+      dir_keys = { left = 'h', right = 'l', up = 'k', down = 'j' },
+      dir_keys_reverse = { left = 'l', right = 'h', up = 'j', down = 'k' },
+      reverse_direction = { left = 'right', right = 'left', up = 'down', down = 'up' },
+    }
+    local focused = {}
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return true end,
+      current_pane_at_edge = function() return false end,
+      nav_at_edge = function() return 'wrap' end,
+      focus_pane = function(d) focused[#focused + 1] = d; return true end,
+    }
+    package.loaded['herdr-splits.nav'] = nil
+    local nav = require('herdr-splits.nav')
+
+    vim.o.splitright = true
+    vim.cmd('vsplit')
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+    table.sort(wins, function(a, b)
+      return vim.api.nvim_win_get_position(a)[2] < vim.api.nvim_win_get_position(b)[2]
+    end)
+    -- left window: 'right' has a Neovim neighbor -> will_wrap == false
+    vim.api.nvim_set_current_win(wins[1])
+    nav.move_cursor('right')
+    return { stayed = vim.api.nvim_get_current_win() == wins[1], focused = focused }
+  end)
+
+  -- Without the guard, wincmd l would move to wins[2]; with it, silent no-op.
+  expect.equality(result, { stayed = true, focused = {} })
+end
+
 return T
