@@ -1,4 +1,15 @@
+<div align='center'>
+
 # herdr-splits.nvim
+
+<p align="center">
+    <em>Check out my other Herdr-related projects.</em> <br>
+    <a href="https://github.com/lmilojevicc/seshagy"><em>Seshagy - Agent aware TUI session manager</em></a>
+    &nbsp; | &nbsp;
+    <a href="https://github.com/lmilojevicc/herdr-tab-rename"><em>Herdr tab rename - Autorename tabs for Herdr</em></a>
+</p>
+
+</div>
 
 Seamless navigation and resizing between Neovim splits and [Herdr](https://herdr.dev) panes. Makes Herdr terminal splits behave like native Neovim windows — move and resize as if they were all part of the same editor.
 
@@ -247,7 +258,7 @@ require('herdr-splits').setup({
 
 > **Eager load required for custom keys.** The generated conf is written by
 > `setup()`, so custom `nav_keys`/`resize_keys` need `setup()` to run eagerly
-> or at `VeryLazy` — do **not** lazy-load this plugin *only* from the same
+> or at `VeryLazy` — do **not** lazy-load this plugin _only_ from the same
 > custom key mappings it must publish. Otherwise the conf carrying your custom
 > chords isn't written before Herdr forwards them, and those keys can't reach
 > Neovim to trigger the lazy load. The recommended spec above already uses
