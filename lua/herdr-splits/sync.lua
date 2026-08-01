@@ -19,6 +19,32 @@ local config = require('herdr-splits.config')
 local PLUGIN_ID = 'herdr-splits'
 local PLUGIN_SOURCE = 'lmilojevicc/herdr-splits.nvim'
 
+local function find_plugin_entry(data)
+  if type(data) ~= 'table' then
+    return nil
+  end
+
+  local entries
+  if data.id ~= nil or data.result ~= nil then
+    if type(data.result) ~= 'table' or type(data.result.plugins) ~= 'table' then
+      return nil
+    end
+    entries = data.result.plugins
+  elseif data[1] ~= nil then
+    entries = data
+  else
+    return data
+  end
+
+  for _, entry in ipairs(entries) do
+    if type(entry) == 'table' and entry.plugin_id == PLUGIN_ID then
+      return entry
+    end
+  end
+
+  return nil
+end
+
 ---Run the sync. Safe to call at any time; never throws.
 function M.sync()
   if config.auto_sync_herdr ~= true then
@@ -61,19 +87,9 @@ function M.sync()
       return
     end
 
-    -- Output may be a single object or an array; find our entry.
-    local entry = data
-    if data[1] ~= nil then
-      for _, e in ipairs(data) do
-        if e.plugin_id == PLUGIN_ID then
-          entry = e
-          break
-        end
-      end
-    end
-
+    local entry = find_plugin_entry(data)
     local src = entry and entry.source
-    if not src then
+    if type(src) ~= 'table' then
       return
     end
     -- Dev mode (plugin link) or unknown kind: nothing to do.
@@ -82,7 +98,11 @@ function M.sync()
     end
 
     -- Already in sync?
-    local managed_sha = vim.trim(src.resolved_commit or '')
+    local managed_sha = src.resolved_commit
+    if managed_sha ~= nil and type(managed_sha) ~= 'string' then
+      return
+    end
+    managed_sha = vim.trim(managed_sha or '')
     if managed_sha ~= '' and managed_sha:lower() == lazy_sha:lower() then
       return
     end

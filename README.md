@@ -58,7 +58,7 @@ herdr plugin link /path/to/herdr-splits
   event = 'VeryLazy',
   -- Optional: auto-sync the Herdr-side scripts when lazy updates this plugin.
   -- Requires `auto_sync_herdr = true` in setup() below to take effect.
-  -- build = 'lua require("herdr-splits").sync_herdr()',
+  -- build = ':lua require("herdr-splits").sync_herdr()',
   config = function()
     require('herdr-splits').setup({
       -- Defaults shown. All fields optional.
@@ -432,13 +432,13 @@ Herdr-managed checkout pinned to the exact commit lazy fetched, so the bash
 scripts always match the lua side. It is a no-op when already in sync, when
 in local-dev (`plugin link`) mode, or when the `herdr` binary is unavailable.
 
-For maximum efficiency, also add a `build` hook so the sync fires only when
-lazy actually updates the plugin, instead of on every Neovim startup:
+Also add a `build` hook so synchronization runs immediately after lazy
+installs or updates. Setup-time sync remains the startup convergence path:
 
 ```lua
 {
   'lmilojevicc/herdr-splits.nvim',
-  build = 'lua require("herdr-splits").sync_herdr()',
+  build = ':lua require("herdr-splits").sync_herdr()',
   config = function()
     require('herdr-splits').setup({ auto_sync_herdr = true })
   end,
