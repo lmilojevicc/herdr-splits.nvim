@@ -432,8 +432,9 @@ Herdr-managed checkout pinned to the exact commit lazy fetched, so the bash
 scripts always match the lua side. It is a no-op when already in sync, when
 in local-dev (`plugin link`) mode, or when the `herdr` binary is unavailable.
 
-Also add a `build` hook so synchronization runs immediately after lazy
-installs or updates. Setup-time sync remains the startup convergence path:
+Also add a `build` hook to attempt synchronization after lazy installs or
+updates when configuration is already active. Normal setup-time synchronization
+still provides convergence on startup:
 
 ```lua
 {
