@@ -195,7 +195,8 @@ the opposite side:
 - Between plain Herdr panes, navigation wraps around at edges too (past the
   last pane → the first).
 - Wrap works even when you're on a sidebar (dbui, neo-tree, quickfix, ...),
-  so you can leave it at an edge; only embedded floating overlays are gated.
+  so you can leave it at an edge. Parent-backed embedded floats use their
+  containing split's geometry; unresolved embedded overlays remain gated.
 
 **To disable auto-unzoom entirely**, pass `unzoom_on_nav = false` to `setup()`:
 
@@ -311,7 +312,7 @@ require('herdr-splits').move_cursor_right(opts)
 
 ## Compatibility
 
-`herdr-splits.nvim` ships with an opinionated default `ignored_filetypes` list so your resize keybinds don't get trapped inside common sidebars and pickers. These filetypes are treated as sidebars: `split`-at-edge and Herdr resize delegation are skipped from them, and the flag is passed to a custom `at_edge` function as `is_sidebar`. `wrap`, however, still works from a sidebar so you can leave it (e.g. `ctrl+l` on a `dadbod-ui` drawer wraps to the opposite side); only embedded floating overlays are gated.
+`herdr-splits.nvim` ships with an opinionated default `ignored_filetypes` list so your resize keybinds don't get trapped inside common sidebars and pickers. These filetypes are treated as sidebars: `split`-at-edge and Herdr resize delegation are skipped from them, and the flag is passed to a custom `at_edge` function as `is_sidebar`. `wrap`, however, still works from a sidebar so you can leave it (e.g. `ctrl+l` on a `dadbod-ui` drawer wraps to the opposite side). Parent-backed embedded floats use their containing split's geometry: inspection and resize preserve embedded-float focus, while successful navigation directly focuses the selected neighboring window without transiently focusing the layout parent. Unresolved embedded floats remain gated.
 
 The default `ignored_filetypes` covers:
 
@@ -324,7 +325,7 @@ The default `ignored_filetypes` covers:
 
 The default `ignored_buftypes` covers `nofile`, `quickfix`, `prompt`, `help`, and `terminal`.
 
-**Embedded floating windows** (snacks explorer in float mode, neo-tree in float mode, aerial in float mode) are detected via the `zindex < floating_zindex_max` heuristic (default threshold 50, Neovim's default float zindex) and treated as sidebars for navigation/resize decisions. Override the threshold via the `floating_zindex_max` config field.
+**Embedded floating windows** (snacks explorer in float mode, neo-tree in float mode, aerial in float mode) are detected via the `zindex < floating_zindex_max` heuristic (default threshold 50, Neovim's default float zindex). When window-relative ancestry resolves to a normal window, geometry inspection and resize preserve embedded-float focus; successful navigation directly focuses the selected neighboring window without transiently focusing the layout parent. Otherwise the embedded float is gated. Override the threshold via the `floating_zindex_max` config field.
 
 **Add your own at runtime** from any `VeryLazy` autocmd:
 
@@ -395,7 +396,7 @@ Two predicates classify the current window before any nav/resize decision:
 - `win.is_floating(winid)` — `nvim_win_get_config(winid).relative ~= ''` (Neovim's built-in float check).
 - `win.is_embedded_floating_window(winid)` — true only for floats with `zindex < floating_zindex_max` (default 50); matches snacks/neo-tree/aerial float-mode sidebars.
 
-True floats forward to Herdr; embedded floats behave as sidebars (no movement, no Herdr delegation).
+True floats forward to Herdr. Embedded floats with a valid window-relative normal ancestor proxy that split's geometry; unresolved embedded floats no-op.
 
 ## Herdr Detection
 

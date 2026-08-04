@@ -209,7 +209,115 @@ T['delegates vertical full-terminal ratios using real geometry'] = function()
   })
 end
 
-T['delegates normal floats but suppresses embedded, sidebar, and zoomed windows'] = function()
+T['resizes embedded parent splits without changing picker focus'] = function()
+  local result = child.lua_func(function()
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return false end,
+    }
+    package.loaded['herdr-splits.resize'] = nil
+    local resize = require('herdr-splits.resize')
+    vim.o.equalalways = false
+    vim.o.winminwidth = 1
+    vim.o.winminheight = 1
+
+    local function horizontal(side, direction)
+      vim.cmd('only')
+      vim.o.splitright = true
+      vim.cmd('vsplit')
+      local roots = vim.api.nvim_tabpage_list_wins(0)
+      table.sort(roots, function(a, b)
+        return vim.api.nvim_win_get_position(a)[2] < vim.api.nvim_win_get_position(b)[2]
+      end)
+      local root = roots[side == 'left' and 1 or 2]
+      local child = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+        relative = 'win', win = root, row = 0, col = 0, width = 10, height = 3, zindex = 49,
+      })
+      vim.api.nvim_set_option_value('buftype', 'nofile', { buf = vim.api.nvim_win_get_buf(child) })
+      local entered_root = false
+      local autocmd = vim.api.nvim_create_autocmd('WinEnter', {
+        callback = function()
+          entered_root = entered_root or vim.api.nvim_get_current_win() == root
+        end,
+      })
+      local before = vim.api.nvim_win_get_width(root)
+      resize.resize(direction, 2)
+      vim.api.nvim_del_autocmd(autocmd)
+      local result = {
+        delta = vim.api.nvim_win_get_width(root) - before,
+        child_focused = vim.api.nvim_get_current_win() == child,
+        entered_root = entered_root,
+      }
+      vim.api.nvim_set_current_win(root)
+      vim.api.nvim_win_close(child, true)
+      return result
+    end
+
+    local left = horizontal('left', 'right')
+    local right = horizontal('right', 'left')
+
+    vim.cmd('only')
+    vim.o.splitbelow = true
+    vim.cmd('split')
+    local roots = vim.api.nvim_tabpage_list_wins(0)
+    table.sort(roots, function(a, b)
+      return vim.api.nvim_win_get_position(a)[1] < vim.api.nvim_win_get_position(b)[1]
+    end)
+    local root = roots[1]
+    local child = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+      relative = 'win', win = root, row = 0, col = 0, width = 10, height = 3, zindex = 49,
+    })
+    local before = vim.api.nvim_win_get_height(root)
+    resize.resize('down', 2)
+    local vertical = {
+      delta = vim.api.nvim_win_get_height(root) - before,
+      child_focused = vim.api.nvim_get_current_win() == child,
+    }
+
+    return { left = left, right = right, vertical = vertical }
+  end)
+
+  expect.equality(result, {
+    left = { delta = 2, child_focused = true, entered_root = false },
+    right = { delta = 2, child_focused = true, entered_root = false },
+    vertical = { delta = 2, child_focused = true },
+  })
+end
+
+T['delegates embedded full-terminal parent resize'] = function()
+  local result = child.lua_func(function()
+    local calls = {}
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return true end,
+      current_pane_is_zoomed = function() return false end,
+      resize_pane = function(direction, amount)
+        calls[#calls + 1] = { direction, amount }
+        return true
+      end,
+    }
+    package.loaded['herdr-splits.resize'] = nil
+    local resize = require('herdr-splits.resize')
+    local root = vim.api.nvim_get_current_win()
+    local child = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+      relative = 'win', win = root, row = 0, col = 0, width = 10, height = 3, zindex = 49,
+    })
+    vim.api.nvim_set_option_value('buftype', 'nofile', { buf = vim.api.nvim_win_get_buf(child) })
+
+    vim.o.laststatus = 1
+    resize.resize('left', 0.2)
+    resize.resize('up', 0.25)
+    return {
+      calls = calls,
+      child_focused = vim.api.nvim_get_current_win() == child,
+    }
+  end)
+
+  expect.equality(result, {
+    calls = { { 'left', 0.2 }, { 'up', 0.25 } },
+    child_focused = true,
+  })
+end
+
+T['delegates normal floats but suppresses unresolved embedded, sidebar, and zoomed windows'] = function()
   local result = child.lua_func(function()
     local calls = {}
     local zoomed = false
