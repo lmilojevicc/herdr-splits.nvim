@@ -20,9 +20,10 @@ M.is_resizing = false
 ---At start/middle: resize_up shrinks (-), resize_down grows (+).
 ---At last (bottom): inverted — resize_up grows (+), resize_down shrinks (-).
 ---@param direction '"up"'|'"down"'
+---@param winid number|nil
 ---@return '"+""'|'"-""'
-local function compute_vertical(direction)
-  local pos = win.win_position(direction)
+local function compute_vertical(direction, winid)
+  local pos = win.win_position(direction, winid)
   if pos == 'start' or pos == 'middle' then
     return direction == 'down' and '+' or '-'
   end
@@ -33,9 +34,10 @@ end
 ---At start/middle: resize_left shrinks (-), resize_right grows (+).
 ---At last (right): inverted — resize_left grows (+), resize_right shrinks (-).
 ---@param direction '"left"'|'"right"'
+---@param winid number|nil
 ---@return '"+""'|'"-""'
-local function compute_horizontal(direction)
-  local pos = win.win_position(direction)
+local function compute_horizontal(direction, winid)
+  local pos = win.win_position(direction, winid)
   if pos == 'start' or pos == 'middle' then
     return direction == 'right' and '+' or '-'
   end
@@ -50,14 +52,18 @@ function M.resize(direction, amount)
   local count = vim.v.count1
   local has_explicit = amount ~= nil
 
-  -- Embedded floating sidebars (snacks float, neo-tree float, aerial float):
-  -- refuse to resize; the picker owns its own dimensions.
-  if win.is_embedded_floating_window() then
-    return
+  local current_win = vim.api.nvim_get_current_win()
+  local embedded = win.is_embedded_floating_window()
+  local geometry_win = current_win
+  if embedded then
+    geometry_win = win.resolve_embedded_parent(current_win)
+    if not geometry_win then
+      return
+    end
   end
 
   -- Floating windows: forward to Herdr
-  if win.is_floating() then
+  if win.is_floating() and not embedded then
     local ratio = has_explicit and amount or (count * config.default_amount)
     herdr.resize_pane(direction, ratio)
     return
@@ -69,11 +75,17 @@ function M.resize(direction, amount)
   -- Never delegate from inside a sidebar; the ignore list applies to resize
   -- too. The command-line window is exempted: it is `nofile` (so it trips this
   -- rule) yet a full-width cmdwin should still resize the Herdr pane sideways.
-  local in_sidebar = win.is_ignored_or_preview()
+  local in_sidebar = not embedded and win.is_ignored_or_preview()
   if direction == 'left' or direction == 'right' then
-    delegate = win.is_full_width() and win.at_left_edge() and win.at_right_edge() and herdr.is_in_session()
+    delegate = win.is_full_width(geometry_win)
+      and win.at_left_edge(geometry_win)
+      and win.at_right_edge(geometry_win)
+      and herdr.is_in_session()
   else
-    delegate = win.is_full_height() and win.at_top_edge() and win.at_bottom_edge() and herdr.is_in_session()
+    delegate = win.is_full_height(geometry_win)
+      and win.at_top_edge(geometry_win)
+      and win.at_bottom_edge(geometry_win)
+      and herdr.is_in_session()
   end
   if delegate and in_sidebar and not win.is_command_line_window() then
     delegate = false
@@ -96,12 +108,15 @@ function M.resize(direction, amount)
   end
 
   local is_horiz = direction == 'left' or direction == 'right'
-  local op = is_horiz and compute_horizontal(direction) or compute_vertical(direction)
+  local op = is_horiz and compute_horizontal(direction, geometry_win) or compute_vertical(direction, geometry_win)
 
-  if is_horiz then
-    pcall(vim.cmd, 'vertical resize ' .. op .. cells)
+  local command = is_horiz and ('vertical resize ' .. op .. cells) or ('resize ' .. op .. cells)
+  if geometry_win == current_win then
+    pcall(vim.cmd, command)
   else
-    pcall(vim.cmd, 'resize ' .. op .. cells)
+    pcall(vim.api.nvim_win_call, geometry_win, function()
+      vim.cmd(command)
+    end)
   end
 end
 

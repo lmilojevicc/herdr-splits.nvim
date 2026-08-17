@@ -102,7 +102,7 @@ T['applies typed navigation counts without wrapping or delegation'] = function()
   })
 end
 
-T['delegates normal floats but not embedded floats'] = function()
+T['delegates normal floats but no-ops unresolved embedded floats'] = function()
   local result = child.lua_func(function()
     local calls = {}
     package.loaded['herdr-splits.herdr'] = {
@@ -132,6 +132,126 @@ T['delegates normal floats but not embedded floats'] = function()
   expect.equality(result, {
     calls = { 'right' },
     normal_stayed = true,
+  })
+end
+
+T['navigates embedded floats using parent split geometry'] = function()
+  local result = child.lua_func(function()
+    local calls = {}
+    package.loaded['herdr-splits.herdr'] = {
+      focus_pane = function(direction)
+        calls[#calls + 1] = direction
+        return true
+      end,
+      is_in_session = function() return false end,
+    }
+    package.loaded['herdr-splits.nav'] = nil
+    local nav = require('herdr-splits.nav')
+
+    vim.o.splitright = true
+    vim.cmd('vsplit')
+    local roots = vim.api.nvim_tabpage_list_wins(0)
+    table.sort(roots, function(a, b)
+      return vim.api.nvim_win_get_position(a)[2] < vim.api.nvim_win_get_position(b)[2]
+    end)
+
+    local entered = {}
+    vim.api.nvim_create_autocmd('WinEnter', {
+      callback = function(args)
+        entered[#entered + 1] = vim.api.nvim_get_current_win()
+      end,
+    })
+
+    local left_child = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+      relative = 'win', win = roots[1], row = 0, col = 0, width = 10, height = 3, zindex = 49,
+    })
+    entered = {}
+    nav.move_cursor('right')
+    local left_inward = vim.api.nvim_get_current_win() == roots[2]
+    local left_entered_root = vim.tbl_contains(entered, roots[1])
+
+    local right_child = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+      relative = 'win', win = roots[2], row = 0, col = 0, width = 10, height = 3, zindex = 49,
+    })
+    entered = {}
+    nav.move_cursor('left')
+    local right_inward = vim.api.nvim_get_current_win() == roots[1]
+    local right_entered_root = vim.tbl_contains(entered, roots[2])
+
+    return {
+      left_inward = left_inward,
+      right_inward = right_inward,
+      left_entered_root = left_entered_root,
+      right_entered_root = right_entered_root,
+      calls = calls,
+      children_valid = vim.api.nvim_win_is_valid(left_child) and vim.api.nvim_win_is_valid(right_child),
+    }
+  end)
+
+  expect.equality(result, {
+    left_inward = true,
+    right_inward = true,
+    left_entered_root = false,
+    right_entered_root = false,
+    calls = {},
+    children_valid = true,
+  })
+end
+
+T['applies Herdr edge behavior from embedded parent geometry'] = function()
+  local result = child.lua_func(function()
+    local calls = {}
+    local edge = false
+    local nav_mode = 'wrap'
+    package.loaded['herdr-splits.herdr'] = {
+      is_in_session = function() return true end,
+      unzoom_enabled = function() return false end,
+      current_pane_at_edge = function(direction)
+        calls[#calls + 1] = 'edge:' .. direction
+        return edge
+      end,
+      nav_at_edge = function() return nav_mode end,
+      focus_pane = function(direction)
+        calls[#calls + 1] = 'focus:' .. direction
+        return true
+      end,
+    }
+    package.loaded['herdr-splits.nav'] = nil
+    local nav = require('herdr-splits.nav')
+
+    vim.o.splitright = true
+    vim.cmd('vsplit')
+    local roots = vim.api.nvim_tabpage_list_wins(0)
+    table.sort(roots, function(a, b)
+      return vim.api.nvim_win_get_position(a)[2] < vim.api.nvim_win_get_position(b)[2]
+    end)
+    local embedded = vim.api.nvim_open_win(vim.api.nvim_create_buf(false, true), true, {
+      relative = 'win', win = roots[1], row = 0, col = 0, width = 10, height = 3, zindex = 49,
+    })
+
+    nav.move_cursor('left')
+    local delegated = vim.api.nvim_get_current_win() == embedded
+    local delegated_calls = vim.deepcopy(calls)
+
+    calls = {}
+    edge = true
+    nav_mode = 'stop'
+    nav.move_cursor('left')
+    local wrapped_locally = vim.api.nvim_get_current_win() == roots[2]
+
+    return {
+      delegated = delegated,
+      delegated_calls = delegated_calls,
+      wrapped_locally = wrapped_locally,
+      wrap_calls = calls,
+    }
+  end)
+
+  expect.equality(result, {
+    delegated = true,
+    delegated_calls = { 'edge:left', 'focus:left' },
+    wrapped_locally = true,
+    wrap_calls = { 'edge:left' },
   })
 end
 

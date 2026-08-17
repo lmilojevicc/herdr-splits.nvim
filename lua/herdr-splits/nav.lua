@@ -23,6 +23,37 @@ local function split_edge(direction)
   end
 end
 
+---@param winid number
+---@param callback function
+---@return any
+local function call_in_window(winid, callback)
+  if winid == vim.api.nvim_get_current_win() then
+    return callback()
+  end
+  local ok, result = pcall(vim.api.nvim_win_call, winid, callback)
+  if ok then
+    return result
+  end
+end
+
+---@param winid number
+---@param key string
+---@param count number
+---@return number|nil, number|nil, number|nil
+local function layout_winnrs(winid, key, count)
+  local result = call_in_window(winid, function()
+    local current = vim.fn.winnr()
+    return {
+      target = vim.fn.winnr(count .. key),
+      previous = count > 1 and vim.fn.winnr((count - 1) .. key) or current,
+      current = current,
+    }
+  end)
+  if result then
+    return result.target, result.previous, result.current
+  end
+end
+
 ---Move cursor between Neovim splits, falling through to Herdr at edges.
 ---This is the core navigation function.
 ---@param direction '"left"'|'"right"'|'"up"'|'"down"'
@@ -40,30 +71,63 @@ function M.move_cursor(direction, opts)
     end
   end
 
-  -- Handle floating windows: just forward to Herdr,
-  -- EXCEPT for embedded sidebars (snacks/neo-tree float/aerial float):
-  -- those should stay in Neovim so the user can keep interacting
-  -- with the picker.
-  if win.is_floating() and not win.is_embedded_floating_window() then
+  local embedded = win.is_embedded_floating_window()
+  if win.is_floating() and not embedded then
     herdr.focus_pane(direction)
     return
   end
 
   local dir_key = win.dir_keys[direction]
   local offset = vim.fn.winline() + vim.api.nvim_win_get_position(0)[1]
-
-  -- Save current window to detect if wincmd changes it
   local prev_win = vim.api.nvim_get_current_win()
+  local geometry_win = prev_win
+  if embedded then
+    geometry_win = win.resolve_embedded_parent(prev_win)
+    if not geometry_win then
+      return
+    end
+  end
 
-  -- Try moving within Neovim first
-  local will_wrap = false
   local count = vim.v.count1
-  local target_winnr = vim.fn.winnr(count .. dir_key)
+  local target_winnr, previous_winnr, current_winnr = layout_winnrs(geometry_win, dir_key, count)
+  if not target_winnr then
+    return
+  end
+  local will_wrap
   if count > 1 then
-    local prev_winnr = vim.fn.winnr((count - 1) .. dir_key)
-    will_wrap = target_winnr == prev_winnr
+    will_wrap = target_winnr == previous_winnr
   else
-    will_wrap = target_winnr == vim.fn.winnr()
+    will_wrap = target_winnr == current_winnr
+  end
+
+  local function restore_same_row()
+    if (direction == 'left' or direction == 'right') and same_row then
+      local row = offset - vim.api.nvim_win_get_position(0)[1]
+      if row > 0 then
+        vim.cmd('normal! ' .. row .. 'H')
+      end
+    end
+  end
+
+  local function move_local(key, move_count)
+    if not embedded then
+      local before = vim.api.nvim_get_current_win()
+      vim.cmd(move_count .. 'wincmd ' .. key)
+      return vim.api.nvim_get_current_win() ~= before
+    end
+
+    local target = call_in_window(geometry_win, function()
+      return vim.fn.win_getid(vim.fn.winnr(move_count .. key))
+    end)
+    if not target or target == geometry_win then
+      return false
+    end
+    local ok = pcall(vim.api.nvim_set_current_win, target)
+    return ok and vim.api.nvim_get_current_win() == target
+  end
+
+  local function wrap_local()
+    return move_local(win.dir_keys_reverse[direction], 1)
   end
 
   -- Command-line window (q:, q/, q?): Neovim forbids all window commands
@@ -82,21 +146,8 @@ function M.move_cursor(direction, opts)
     return
   end
 
-  -- Execute the wincmd
-  if will_wrap and count == 1 then
-    vim.cmd('wincmd ' .. dir_key)
-  else
-    vim.cmd(count .. 'wincmd ' .. dir_key)
-  end
-
-  if vim.api.nvim_get_current_win() ~= prev_win then
-    -- Moved within Neovim. Restore same-row if configured.
-    if (direction == 'left' or direction == 'right') and same_row then
-      local row = offset - vim.api.nvim_win_get_position(0)[1]
-      if row > 0 then
-        vim.cmd('normal! ' .. row .. 'H')
-      end
-    end
+  if move_local(dir_key, count) then
+    restore_same_row()
     return
   end
 
@@ -109,9 +160,7 @@ function M.move_cursor(direction, opts)
           direction = direction,
           split = function() split_edge(direction) end,
           is_sidebar = sidebar,
-          wrap = function()
-            vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
-          end,
+          wrap = wrap_local,
         })
       elseif at_edge_behavior == 'stop' then
         return
@@ -120,11 +169,7 @@ function M.move_cursor(direction, opts)
           split_edge(direction)
         end
       else -- 'wrap' (default)
-        -- Wrap is allowed even from filetype-based sidebars (dbui, neo-tree,
-        -- ...) so the user can leave them; only embedded floats stay gated.
-        if not win.is_embedded_floating_window() then
-          vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
-        end
+        wrap_local()
       end
     end
     return
@@ -136,15 +181,14 @@ function M.move_cursor(direction, opts)
   -- at_herdr_edge useless until we unzoom.
   if herdr.unzoom_enabled() and herdr.current_pane_is_zoomed() then
     herdr.unzoom()
-    -- Retry wincmd — other Neovim splits may now be visible
-    vim.cmd('wincmd ' .. dir_key)
-    if vim.api.nvim_get_current_win() ~= prev_win then
-      if (direction == 'left' or direction == 'right') and same_row then
-        local row = offset - vim.api.nvim_win_get_position(0)[1]
-        if row > 0 then
-          vim.cmd('normal! ' .. row .. 'H')
-        end
+    if embedded then
+      geometry_win = win.resolve_embedded_parent(prev_win)
+      if not geometry_win then
+        return
       end
+    end
+    if move_local(dir_key, 1) then
+      restore_same_row()
       return
     end
     -- Still at edge after unzoom; fall through to Herdr edge check.
@@ -153,8 +197,8 @@ function M.move_cursor(direction, opts)
   -- Check if we're at the Herdr edge too
   local at_herdr_edge = herdr.current_pane_at_edge(direction)
   if at_herdr_edge == nil then
-    if will_wrap and count == 1 and not win.is_embedded_floating_window() then
-      vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+    if will_wrap and count == 1 then
+      wrap_local()
     end
     return
   end
@@ -162,8 +206,8 @@ function M.move_cursor(direction, opts)
   if not at_herdr_edge then
     -- There's a Herdr pane in this direction. Cross the boundary.
     local moved = herdr.focus_pane(direction)
-    if not moved and will_wrap and count == 1 and not win.is_embedded_floating_window() then
-      vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+    if not moved and will_wrap and count == 1 then
+      wrap_local()
     end
     return
   end
@@ -175,9 +219,7 @@ function M.move_cursor(direction, opts)
       direction = direction,
       split = function() split_edge(direction) end,
       is_sidebar = is_sidebar(),
-      wrap = function()
-        vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
-      end,
+      wrap = wrap_local,
     })
   elseif at_edge_behavior == 'stop' then
     return
@@ -186,9 +228,7 @@ function M.move_cursor(direction, opts)
       split_edge(direction)
     end
   else -- 'wrap' (default)
-    -- Wrap is allowed from filetype-based sidebars (dbui, neo-tree, ...) so
-    -- you can leave them at an edge; only embedded floating overlays stay gated.
-    if will_wrap and count == 1 and not win.is_embedded_floating_window() then
+    if will_wrap and count == 1 then
       -- Wrap to the opposite side. If a Herdr pane exists there AND nav_at_edge
       -- allows wrap-across-boundary (the default), cross into it; otherwise
       -- wrap within Neovim. nav_at_edge=stop keeps the wrap inside Neovim.
@@ -197,7 +237,7 @@ function M.move_cursor(direction, opts)
       then
         herdr.focus_pane(win.reverse_direction[direction])
       else
-        vim.cmd('wincmd ' .. win.dir_keys_reverse[direction])
+        wrap_local()
       end
     end
   end
