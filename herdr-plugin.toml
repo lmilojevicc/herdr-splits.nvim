@@ -1,6 +1,6 @@
 id = "herdr-splits"
 name = "Herdr Splits"
-version = "0.5.2"
+version = "0.5.3"
 min_herdr_version = "0.7.0"
 description = "Seamless navigation and resizing between Herdr panes and Neovim splits"
 platforms = ["linux", "macos"]
