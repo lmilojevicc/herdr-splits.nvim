@@ -46,7 +46,7 @@ end
 ---Root of Herdr's own config tree, mirroring Herdr's `config_dir()`:
 ---`$XDG_CONFIG_HOME/herdr` when that is an absolute path, else
 ---`%APPDATA%\herdr` (then `%USERPROFILE%\AppData\Roaming\herdr`) on Windows,
----else `$HOME/.config/herdr`. Forward slashes throughout; Win32 accepts them.
+---else `$HOME/.config/herdr`. Forward slashes throughout, Win32 accepts them.
 ---@return string
 local function herdr_config_root()
   local xdg = vim.env.XDG_CONFIG_HOME
@@ -105,8 +105,7 @@ function M.path()
     resolved_path = dir .. '/herdr-splits.conf'
     return resolved_path
   end
-  resolved_path = vim.fs.normalize(
-    herdr_config_root() .. '/plugins/config/herdr-splits/herdr-splits.conf')
+  resolved_path = vim.fs.normalize(herdr_config_root() .. '/plugins/config/herdr-splits/herdr-splits.conf')
   return resolved_path
 end
 
@@ -181,7 +180,7 @@ end
 
 ---Write the full managed key set to the shared config with a generated-file
 ---header (including the MARKER), atomically via a unique same-dir temp +
----os.rename so a script never observes a partial write and two concurrent
+---rename so a script never observes a partial write and two concurrent
 ---Neovim instances don't share a temp inode. Skips the write entirely when the
 ---content is unchanged (preserves mtime, reduces multi-instance contention).
 ---Returns (true, nil) on success or (false, err) on failure; callers wrap in
@@ -218,7 +217,7 @@ function M.write(resolved)
   end
 
   vim.fn.mkdir(vim.fn.fnamemodify(path, ':h'), 'p')
-  -- Unique same-dir temp so os.rename stays same-filesystem (atomic) and two
+  -- Unique same-dir temp so the rename stays same-filesystem (atomic) and two
   -- Neovim instances don't collide on a shared temp inode.
   local tmp = path .. '.tmp.' .. vim.fn.getpid() .. '.' .. tostring(uv.hrtime())
   local f, err = io.open(tmp, 'wb')
@@ -244,12 +243,16 @@ function M.write(resolved)
   -- destination already exists. uv.fs_rename uses MoveFileExW with
   -- MOVEFILE_REPLACE_EXISTING there and plain rename(2) elsewhere, so it
   -- replaces atomically on every platform.
-  local ok, rerr
+  local renamed, rerr
   if uv and uv.fs_rename then
-    ok, rerr = uv.fs_rename(tmp, path)
+    renamed, rerr = uv.fs_rename(tmp, path)
   else
-    ok, rerr = os.rename(tmp, path)
+    renamed, rerr = os.rename(tmp, path)
   end
+  -- Both return `true` on success and `nil, err` on failure -- never `false`.
+  -- Normalise so the documented (true, nil) / (false, err) contract actually
+  -- holds and the declared `boolean` return type is honest.
+  local ok = renamed == true
   if not ok then
     pcall(os.remove, tmp)
     vim.notify('herdr-splits: failed to write conf: ' .. tostring(rerr), vim.log.levels.WARN)
