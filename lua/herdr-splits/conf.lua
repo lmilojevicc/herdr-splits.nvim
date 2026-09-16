@@ -28,6 +28,40 @@ local uv = vim.uv or vim.loop
 -- `herdr plugin config-dir` at most once per process.
 local resolved_path
 
+local is_windows = vim.fn.has('win32') == 1
+
+---True when `p` is absolute on this platform: POSIX `/...`, or on Windows a
+---drive-letter path (`C:\...`, `C:/...`) or a UNC share (`\\host\share`).
+---@param p string|nil
+---@return boolean
+local function is_absolute(p)
+  if type(p) ~= 'string' or p == '' then return false end
+  if p:sub(1, 1) == '/' then return true end
+  if is_windows then
+    return p:match('^%a:[/\\]') ~= nil or p:sub(1, 2) == '\\\\'
+  end
+  return false
+end
+
+---Root of Herdr's own config tree, mirroring Herdr's `config_dir()`:
+---`$XDG_CONFIG_HOME/herdr` when that is an absolute path, else
+---`%APPDATA%\herdr` (then `%USERPROFILE%\AppData\Roaming\herdr`) on Windows,
+---else `$HOME/.config/herdr`. Forward slashes throughout; Win32 accepts them.
+---@return string
+local function herdr_config_root()
+  local xdg = vim.env.XDG_CONFIG_HOME
+  if is_absolute(xdg) then return xdg .. '/herdr' end
+  if is_windows then
+    local appdata = vim.env.APPDATA
+    if appdata and appdata ~= '' then return appdata .. '/herdr' end
+    local profile = vim.env.USERPROFILE
+    if profile and profile ~= '' then return profile .. '/AppData/Roaming/herdr' end
+  end
+  local home = vim.env.HOME
+  if not home or home == '' then home = vim.fn.expand('~') end
+  return home .. '/.config/herdr'
+end
+
 ---Resolve the herdr binary: a config.herdr_bin override (when the config
 ---module is loaded), then HERDR_BIN_PATH, then 'herdr'. pcall-required so
 ---conf.lua never hard-requires config.lua at load time (cycle-safe).
@@ -71,10 +105,8 @@ function M.path()
     resolved_path = dir .. '/herdr-splits.conf'
     return resolved_path
   end
-  local xdg = vim.env.XDG_CONFIG_HOME
-  local base = (xdg and xdg:sub(1, 1) == '/') and xdg
-      or ((vim.env.HOME or '~') .. '/.config')
-  resolved_path = base .. '/herdr/plugins/config/herdr-splits/herdr-splits.conf'
+  resolved_path = vim.fs.normalize(
+    herdr_config_root() .. '/plugins/config/herdr-splits/herdr-splits.conf')
   return resolved_path
 end
 
