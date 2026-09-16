@@ -3,7 +3,7 @@ name = "Herdr Splits"
 version = "0.5.3"
 min_herdr_version = "0.7.0"
 description = "Seamless navigation and resizing between Herdr panes and Neovim splits"
-platforms = ["linux", "macos"]
+platforms = ["linux", "macos", "windows"]
 
 # Herdr-side navigation actions. These check if the focused pane is running
 # Neovim and either forward the key chord or move Herdr pane focus.
@@ -12,51 +12,200 @@ platforms = ["linux", "macos"]
 #   key = "ctrl+h"
 #   type = "plugin_action"
 #   command = "herdr-splits.nav-left"
+#
+# Herdr has no per-platform `command` form and rejects duplicate action ids,
+# so the Windows variants are separate actions with a `-windows` suffix. Each
+# action declares the platforms it supports; Herdr refuses to invoke one that
+# does not match the host, so the inapplicable half is inert.
 
 [[actions]]
 id = "nav-left"
 title = "Navigate left (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-nav.sh", "left"]
+
+[[actions]]
+id = "nav-left-windows"
+title = "Navigate left (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-nav.ps1',
+  "left",
+]
 
 [[actions]]
 id = "nav-down"
 title = "Navigate down (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-nav.sh", "down"]
+
+[[actions]]
+id = "nav-down-windows"
+title = "Navigate down (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-nav.ps1',
+  "down",
+]
 
 [[actions]]
 id = "nav-up"
 title = "Navigate up (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-nav.sh", "up"]
+
+[[actions]]
+id = "nav-up-windows"
+title = "Navigate up (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-nav.ps1',
+  "up",
+]
 
 [[actions]]
 id = "nav-right"
 title = "Navigate right (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-nav.sh", "right"]
+
+[[actions]]
+id = "nav-right-windows"
+title = "Navigate right (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-nav.ps1',
+  "right",
+]
 
 [[actions]]
 id = "resize-left"
 title = "Resize left (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-resize.sh", "left"]
+
+[[actions]]
+id = "resize-left-windows"
+title = "Resize left (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-resize.ps1',
+  "left",
+]
 
 [[actions]]
 id = "resize-down"
 title = "Resize down (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-resize.sh", "down"]
+
+[[actions]]
+id = "resize-down-windows"
+title = "Resize down (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-resize.ps1',
+  "down",
+]
 
 [[actions]]
 id = "resize-up"
 title = "Resize up (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-resize.sh", "up"]
+
+[[actions]]
+id = "resize-up-windows"
+title = "Resize up (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-resize.ps1',
+  "up",
+]
 
 [[actions]]
 id = "resize-right"
 title = "Resize right (Neovim/Herder)"
 contexts = ["global"]
+platforms = ["linux", "macos"]
 command = ["bash", "scripts/herdr-resize.sh", "right"]
+
+[[actions]]
+id = "resize-right-windows"
+title = "Resize right (Neovim/Herder)"
+contexts = ["global"]
+platforms = ["windows"]
+command = [
+  "powershell.exe",
+  "-NoLogo",
+  "-NoProfile",
+  "-NonInteractive",
+  "-ExecutionPolicy",
+  "Bypass",
+  "-File",
+  'scripts\herdr-resize.ps1',
+  "right",
+]
