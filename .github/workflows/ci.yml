@@ -22,6 +22,17 @@ jobs:
         with:
           persist-credentials: false
       - run: make check-shell
+      - run: make test-shell
+
+  powershell:
+    name: PowerShell syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - run: make check-windows
 
   test:
     name: Neovim ${{ matrix.neovim-version }}
@@ -41,3 +52,32 @@ jobs:
           neovim: true
           version: ${{ matrix.neovim-version }}
       - run: make test
+
+  test-windows:
+    name: Neovim ${{ matrix.neovim-version }} (windows)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim-version: [stable]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          submodules: true
+      - uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1.6.1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim-version }}
+      # The Makefile needs a POSIX shell, so invoke the suite directly here.
+      - name: Run tests
+        shell: pwsh
+        run: |
+          nvim --headless --noplugin -i NONE `
+            -u scripts/minimal_init.lua -c "lua MiniTest.run()"
+      - name: Check PowerShell helpers
+        shell: pwsh
+        run: |
+          ./tests/shell/check_powershell.ps1
+          ./tests/shell/test_vim_name.ps1
