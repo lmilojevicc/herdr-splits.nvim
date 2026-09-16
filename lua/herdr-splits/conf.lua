@@ -112,7 +112,7 @@ end
 ---last occurrence wins (matches the scripts' `tail -n 1`).
 ---@return table values, boolean adopted
 function M.read_managed()
-  local f = io.open(M.path(), 'r')
+  local f = io.open(M.path(), 'rb')
   if not f then return {}, false end
   local out = { nav_keys = {}, resize_keys = {} }
   for line in f:lines() do
@@ -178,7 +178,7 @@ function M.write(resolved)
   local content = table.concat(lines, '\n') .. '\n'
 
   -- Skip when unchanged: only when the existing file's bytes match exactly.
-  local existing = io.open(path, 'r')
+  local existing = io.open(path, 'rb')
   if existing then
     local prev = existing:read('*a')
     existing:close()
@@ -189,7 +189,7 @@ function M.write(resolved)
   -- Unique same-dir temp so os.rename stays same-filesystem (atomic) and two
   -- Neovim instances don't collide on a shared temp inode.
   local tmp = path .. '.tmp.' .. vim.fn.getpid() .. '.' .. tostring(uv.hrtime())
-  local f, err = io.open(tmp, 'w')
+  local f, err = io.open(tmp, 'wb')
   if not f then
     pcall(os.remove, tmp)
     vim.notify('herdr-splits: failed to open conf temp file: ' .. tostring(err), vim.log.levels.WARN)
@@ -208,7 +208,16 @@ function M.write(resolved)
     vim.notify('herdr-splits: failed to write conf temp file: ' .. tostring(why), vim.log.levels.WARN)
     return false, why
   end
-  local ok, rerr = os.rename(tmp, path)
+  -- os.rename maps to C rename(), which on Windows fails with EEXIST when the
+  -- destination already exists. uv.fs_rename uses MoveFileExW with
+  -- MOVEFILE_REPLACE_EXISTING there and plain rename(2) elsewhere, so it
+  -- replaces atomically on every platform.
+  local ok, rerr
+  if uv and uv.fs_rename then
+    ok, rerr = uv.fs_rename(tmp, path)
+  else
+    ok, rerr = os.rename(tmp, path)
+  end
   if not ok then
     pcall(os.remove, tmp)
     vim.notify('herdr-splits: failed to write conf: ' .. tostring(rerr), vim.log.levels.WARN)
