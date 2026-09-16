@@ -59,7 +59,7 @@ pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"[[:spa
 # Check if focused pane is running vim/nvim as foreground process.
 is_vim=0
 if [ -n "$pane_id" ] && pane_info=$("$herdr" pane process-info --current 2>/dev/null); then
-  if echo "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
+  if echo "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)([.]exe)?"' 2>/dev/null; then
     is_vim=1
   fi
 fi

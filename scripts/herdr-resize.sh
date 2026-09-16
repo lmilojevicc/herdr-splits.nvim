@@ -36,7 +36,7 @@ if [ -r "$config_path" ]; then
 fi
 
 # Get focused pane ID from server
-pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"\s*:\s*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
 if [ -z "$pane_id" ]; then
   exec "$herdr" pane resize --direction "$dir" --amount "$amount" --current
 fi
@@ -46,7 +46,7 @@ fi
 # whether to resize a Neovim split or hand off to Herdr.
 is_vim=0
 if pane_info=$("$herdr" pane process-info --current 2>/dev/null); then
-  if echo "$pane_info" | grep -qiE '"name"\s*:\s*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
+  if echo "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)([.]exe)?"' 2>/dev/null; then
     is_vim=1
   fi
 fi
