@@ -193,4 +193,106 @@ T['config setup applies precedence and resets omitted managed options'] = functi
   })
 end
 
+T['write replaces an existing conf'] = function()
+  local result = child.lua_func(function()
+    vim.notify = function() end
+    local conf = require('herdr-splits.conf')
+    local resolved = {
+      nav_keys = { left = 'ctrl+h', down = 'ctrl+j', up = 'ctrl+k', right = 'ctrl+l' },
+      resize_keys = { left = 'alt+h', down = 'alt+j', up = 'alt+k', right = 'alt+l' },
+      unzoom_on_nav = true,
+      nav_at_edge = 'wrap',
+    }
+    local first_ok = conf.write(resolved)
+
+    -- Same path, different content: this is the write that used to fail on
+    -- Windows, because os.rename cannot replace an existing destination.
+    resolved.nav_at_edge = 'stop'
+    resolved.unzoom_on_nav = false
+    local second_ok = conf.write(resolved)
+
+    local file = assert(io.open(vim.env.HERDR_SPLITS_CONFIG, 'rb'))
+    local bytes = file:read('*a')
+    file:close()
+    return {
+      first_ok = first_ok,
+      second_ok = second_ok,
+      has_stop = bytes:find('nav_at_edge=stop', 1, true) ~= nil,
+      has_unzoom_false = bytes:find('unzoom_on_nav=false', 1, true) ~= nil,
+      leftover_temps = #vim.fn.glob(vim.env.HERDR_SPLITS_CONFIG .. '.tmp.*', false, true),
+    }
+  end)
+
+  expect.equality(result, {
+    first_ok = true,
+    second_ok = true,
+    has_stop = true,
+    has_unzoom_false = true,
+    leftover_temps = 0,
+  })
+end
+
+T['path honours an absolute XDG_CONFIG_HOME'] = function()
+  local resolved = child.lua_func(function()
+    vim.env.HERDR_SPLITS_CONFIG = nil
+    vim.env.HERDR_PLUGIN_CONFIG_DIR = nil
+    vim.env.XDG_CONFIG_HOME = '/xdg-root'
+    return require('herdr-splits.conf').path()
+  end)
+
+  expect.equality(resolved, '/xdg-root/herdr/plugins/config/herdr-splits/herdr-splits.conf')
+end
+
+T['path honours a drive-letter XDG_CONFIG_HOME'] = function()
+  if vim.fn.has('win32') == 0 then
+    MiniTest.skip('windows-only path shape')
+  end
+
+  local resolved = child.lua_func(function()
+    vim.env.HERDR_SPLITS_CONFIG = nil
+    vim.env.HERDR_PLUGIN_CONFIG_DIR = nil
+    vim.env.XDG_CONFIG_HOME = [[C:\xdg-root]]
+    return require('herdr-splits.conf').path()
+  end)
+
+  expect.equality(resolved, 'C:/xdg-root/herdr/plugins/config/herdr-splits/herdr-splits.conf')
+end
+
+T['path falls back to APPDATA on windows'] = function()
+  if vim.fn.has('win32') == 0 then
+    MiniTest.skip('windows-only fallback')
+  end
+
+  local resolved = child.lua_func(function()
+    vim.env.HERDR_SPLITS_CONFIG = nil
+    vim.env.HERDR_PLUGIN_CONFIG_DIR = nil
+    vim.env.XDG_CONFIG_HOME = nil
+    vim.env.APPDATA = [[C:\Users\tester\AppData\Roaming]]
+    return require('herdr-splits.conf').path()
+  end)
+
+  expect.equality(
+    resolved,
+    'C:/Users/tester/AppData/Roaming/herdr/plugins/config/herdr-splits/herdr-splits.conf'
+  )
+end
+
+T['path never yields a literal tilde'] = function()
+  local resolved = child.lua_func(function()
+    vim.env.HERDR_SPLITS_CONFIG = nil
+    vim.env.HERDR_PLUGIN_CONFIG_DIR = nil
+    vim.env.XDG_CONFIG_HOME = nil
+    vim.env.HOME = nil
+    vim.env.APPDATA = nil
+    vim.env.USERPROFILE = nil
+    return require('herdr-splits.conf').path()
+  end)
+
+  -- A literal "~" as a path *component* is the bug: it means the home
+  -- directory never expanded and mkdir would create a folder named "~".
+  -- A tilde inside a component is fine -- Windows 8.3 short names such as
+  -- C:/Users/TIM~1.JAN legitimately contain one.
+  expect.equality(resolved:match('^~/') or resolved:match('/~/') or resolved:match('/~$'), nil)
+end
+
 return T
