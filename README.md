@@ -29,6 +29,11 @@ Inspired by [smart-splits.nvim](https://github.com/mrjones2014/smart-splits.nvim
 - Neovim ≥ 0.10
 - [Herdr](https://herdr.dev) ≥ 0.7.0 (for plugin actions)
 
+Runs on Linux, macOS and Windows. The Herdr-side actions are shell scripts on
+Linux and macOS and PowerShell (Windows PowerShell 5.1, no install needed) on
+Windows; Herdr picks the right pair automatically from the manifest. The Neovim
+side is identical everywhere.
+
 ## Installation
 
 Three steps — install on both the Herdr side and the Neovim side, then add keybinds.
@@ -450,6 +455,10 @@ still provides convergence on startup:
 **Option B — manual:** after an update, re-run
 `herdr plugin install lmilojevicc/herdr-splits.nvim` to refresh the
 Herdr-side scripts.
+
+Running a fork? Set `herdr_plugin_source = 'you/herdr-splits.nvim'` in
+`setup()` so `auto_sync_herdr` reinstalls from your repo — the commit lazy
+fetched does not exist upstream, so the default source would fail on `--ref`.
 
 Release notes for each version live in [GitHub Releases](https://github.com/lmilojevicc/herdr-splits.nvim/releases).
 
