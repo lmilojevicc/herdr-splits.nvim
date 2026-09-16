@@ -8,6 +8,7 @@
 ---@field herdr_bin string|nil Path to herdr binary (auto-detected if nil)
 ---@field ignored_events string[] Autocmd events to ignore during resize operations
 ---@field auto_sync_herdr boolean|nil If true, auto-sync the Herdr-managed checkout to match this lazy commit (opt-in; default false)
+---@field herdr_plugin_source string|nil `owner/repo` used by `herdr plugin install` when auto-syncing (default: upstream; override when running a fork)
 ---@field floating_zindex_max number Threshold below which a floating window's zindex classifies it as an embedded sidebar (default 50; Neovim's default float zindex)
 ---@field ignore_previewwindows boolean If true, vim.wo[winid].previewwindow windows (e.g. dadbod `.dbout`) are treated as sidebars (opt-in; default false)
 --- Managed config (written to herdr-splits.conf by setup()). Pass Neovim
@@ -53,6 +54,7 @@ local M = {
   herdr_bin = nil,
   ignored_events = { 'BufEnter', 'WinEnter' },
   auto_sync_herdr = false,
+  herdr_plugin_source = 'lmilojevicc/herdr-splits.nvim',
   floating_zindex_max = 50,
   ignore_previewwindows = false,
   -- Managed config: deep-copied from managed_defaults (single source).

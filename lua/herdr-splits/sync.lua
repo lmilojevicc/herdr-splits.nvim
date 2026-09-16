@@ -15,9 +15,20 @@ local M = {}
 
 local config = require('herdr-splits.config')
 
----Plugin id and GitHub source as used by `herdr plugin install`.
+---Plugin id as used by `herdr plugin install`.
 local PLUGIN_ID = 'herdr-splits'
-local PLUGIN_SOURCE = 'lmilojevicc/herdr-splits.nvim'
+---Upstream GitHub source, used when config.herdr_plugin_source is unset.
+local DEFAULT_PLUGIN_SOURCE = 'lmilojevicc/herdr-splits.nvim'
+
+---`owner/repo` to reinstall from. Forks must override this via
+---`herdr_plugin_source` in setup(): the lazy commit only exists on the fork,
+---so reinstalling from upstream would always fail on `--ref`.
+---@return string
+local function plugin_source()
+  local source = config.herdr_plugin_source
+  if type(source) == 'string' and source ~= '' then return source end
+  return DEFAULT_PLUGIN_SOURCE
+end
 
 local function find_plugin_entry(data)
   if type(data) ~= 'table' then
@@ -109,7 +120,7 @@ function M.sync()
 
     -- Reinstall pinned to the lazy commit.
     local obj3 = vim.system(
-      { bin, 'plugin', 'install', PLUGIN_SOURCE, '--ref', lazy_sha, '--yes' },
+      { bin, 'plugin', 'install', plugin_source(), '--ref', lazy_sha, '--yes' },
       { text = true }
     ):wait()
     if obj3.code == 0 then

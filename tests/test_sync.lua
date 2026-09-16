@@ -11,6 +11,7 @@ local function run_sync(params)
     local config = require('herdr-splits.config')
     config.auto_sync_herdr = case.auto_sync ~= false
     config.herdr_bin = vim.v.progpath
+    if case.plugin_source ~= nil then config.herdr_plugin_source = case.plugin_source end
 
     local queue = {}
     if config.auto_sync_herdr then
@@ -47,6 +48,7 @@ local function run_sync(params)
     lazy_sha = params.lazy_sha or lazy_sha,
     plugin_list = params.plugin_list or '',
     install_code = params.install_code,
+    plugin_source = params.plugin_source,
   })
 end
 
@@ -62,14 +64,14 @@ local function expect_common_calls(result, expected_count)
   })
 end
 
-local function expect_install(result)
+local function expect_install(result, expected_source)
   expect_common_calls(result, 3)
   expect.equality(result.calls[3], {
     argv = {
       result.bin,
       'plugin',
       'install',
-      'lmilojevicc/herdr-splits.nvim',
+      expected_source or 'lmilojevicc/herdr-splits.nvim',
       '--ref',
       lazy_sha,
       '--yes',
@@ -214,6 +216,19 @@ T['performs no subprocess work when auto-sync is disabled'] = function()
 
   expect.equality(result.calls, {})
   expect.equality(result.notifications, {})
+end
+
+T['installs from a configured fork source'] = function()
+  local result = run_sync({
+    plugin_list = vim.json.encode({
+      id = 'cli:plugin',
+      result = { plugins = { github_entry('stale') } },
+    }),
+    install_code = 0,
+    plugin_source = 'someone/herdr-splits.nvim',
+  })
+
+  expect_install(result, 'someone/herdr-splits.nvim')
 end
 
 return T
