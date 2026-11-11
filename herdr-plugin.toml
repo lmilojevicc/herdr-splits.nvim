@@ -17,46 +17,46 @@ platforms = ["linux", "macos"]
 id = "nav-left"
 title = "Navigate left (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-nav.sh", "left"]
+command = ["/bin/sh", "scripts/herdr-nav.sh", "left"]
 
 [[actions]]
 id = "nav-down"
 title = "Navigate down (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-nav.sh", "down"]
+command = ["/bin/sh", "scripts/herdr-nav.sh", "down"]
 
 [[actions]]
 id = "nav-up"
 title = "Navigate up (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-nav.sh", "up"]
+command = ["/bin/sh", "scripts/herdr-nav.sh", "up"]
 
 [[actions]]
 id = "nav-right"
 title = "Navigate right (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-nav.sh", "right"]
+command = ["/bin/sh", "scripts/herdr-nav.sh", "right"]
 
 [[actions]]
 id = "resize-left"
 title = "Resize left (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-resize.sh", "left"]
+command = ["/bin/sh", "scripts/herdr-resize.sh", "left"]
 
 [[actions]]
 id = "resize-down"
 title = "Resize down (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-resize.sh", "down"]
+command = ["/bin/sh", "scripts/herdr-resize.sh", "down"]
 
 [[actions]]
 id = "resize-up"
 title = "Resize up (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-resize.sh", "up"]
+command = ["/bin/sh", "scripts/herdr-resize.sh", "up"]
 
 [[actions]]
 id = "resize-right"
 title = "Resize right (Neovim/Herder)"
 contexts = ["global"]
-command = ["bash", "scripts/herdr-resize.sh", "right"]
+command = ["/bin/sh", "scripts/herdr-resize.sh", "right"]

@@ -1,7 +1,7 @@
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 NVIM ?= nvim
 
-.PHONY: deps test check-shell check
+.PHONY: deps test check-shell test-shell check
 
 deps:
 	@if git -C "$(ROOT)" ls-files --error-unmatch deps/mini.test >/dev/null 2>&1; then \
@@ -15,7 +15,10 @@ test: deps
 		-u "$(ROOT)/scripts/minimal_init.lua" -c "lua MiniTest.run()"
 
 check-shell:
-	bash -n "$(ROOT)/scripts/herdr-nav.sh"
-	bash -n "$(ROOT)/scripts/herdr-resize.sh"
+	sh -n "$(ROOT)/scripts/herdr-nav.sh"
+	sh -n "$(ROOT)/scripts/herdr-resize.sh"
 
-check: check-shell test
+test-shell:
+	sh "$(ROOT)/tests/scripts_test.sh"
+
+check: check-shell test-shell test

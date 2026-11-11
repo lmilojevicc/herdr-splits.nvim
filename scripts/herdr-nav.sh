@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Herdr navigation helper — used by herdr keybinds for seamless two-way nav.
 #
 # When a navigation key is pressed in Herdr:
@@ -19,9 +19,13 @@
 # the same conf file: `wrap` (default; wraps to the opposite side at an edge)
 # or `stop` (navigation halts at the edge instead of wrapping).
 #
+# Kept POSIX sh and run via /bin/sh: every process spawned per keypress adds
+# latency, and on macOS non-system binaries (e.g. Homebrew bash) can stall for
+# hundreds of milliseconds in code-signing checks before they start.
+#
 # Usage: herdr-nav.sh <left|down|up|right>
 
-set -euo pipefail
+set -eu
 
 dir="${1:?usage: herdr-nav.sh <left|down|up|right>}"
 herdr="${HERDR_BIN_PATH:-herdr}"
@@ -52,15 +56,20 @@ if [ -r "$config_path" ]; then
   fi
 fi
 
-# Get focused pane ID from server (best-effort; empty is fine — we fall
-# through to the non-vim path below, which uses --current directly).
-pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
-
-# Check if focused pane is running vim/nvim as foreground process.
+# Check if the focused pane is running vim/nvim as its foreground process.
+# `process-info` also reports the pane ID, so one call answers both questions
+# (best-effort; on failure we fall through to the non-vim path below, which
+# uses --current directly).
 is_vim=0
-if [ -n "$pane_id" ] && pane_info=$("$herdr" pane process-info --current 2>/dev/null); then
-  if echo "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
-    is_vim=1
+pane_id=
+if pane_info=$("$herdr" pane process-info --current 2>/dev/null); then
+  if printf '%s' "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
+    pane_id=$(printf '%s' "$pane_info" | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+    # Older Herdr releases may omit the pane ID from process-info.
+    if [ -z "$pane_id" ]; then
+      pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+    fi
+    [ -n "$pane_id" ] && is_vim=1
   fi
 fi
 
