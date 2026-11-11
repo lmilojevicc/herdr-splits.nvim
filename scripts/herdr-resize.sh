@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Herdr resize helper — used by herdr keybinds for seamless two-way resize.
 #
 # When a resize key (alt+h/j/k/l) is pressed in Herdr:
@@ -9,9 +9,12 @@
 # Zoom state is left untouched (matches smart-splits.nvim's
 # disable_multiplexer_nav_when_zoomed default).
 #
+# Kept POSIX sh and run via /bin/sh to minimise per-keypress process spawns
+# (see herdr-nav.sh).
+#
 # Usage: herdr-resize.sh <left|down|up|right> [amount]
 
-set -euo pipefail
+set -eu
 
 dir="${1:?usage: herdr-resize.sh <left|down|up|right> [amount]}"
 amount="${2:-0.03}"
@@ -35,19 +38,20 @@ if [ -r "$config_path" ]; then
   fi
 fi
 
-# Get focused pane ID from server
-pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"\s*:\s*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-if [ -z "$pane_id" ]; then
-  exec "$herdr" pane resize --direction "$dir" --amount "$amount" --current
-fi
-
-# Check if focused pane is running vim/nvim as foreground process.
+# Check if the focused pane is running vim/nvim as its foreground process.
 # When it is, the key is forwarded into Neovim so the plugin can decide
-# whether to resize a Neovim split or hand off to Herdr.
+# whether to resize a Neovim split or hand off to Herdr. `process-info` also
+# reports the pane ID, so one call answers both questions.
 is_vim=0
+pane_id=
 if pane_info=$("$herdr" pane process-info --current 2>/dev/null); then
-  if echo "$pane_info" | grep -qiE '"name"\s*:\s*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
-    is_vim=1
+  if printf '%s' "$pane_info" | grep -qiE '"name"[[:space:]]*:[[:space:]]*"(g?(view|l?n?vim?x?)(diff)?)"' 2>/dev/null; then
+    pane_id=$(printf '%s' "$pane_info" | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+    # Older Herdr releases may omit the pane ID from process-info.
+    if [ -z "$pane_id" ]; then
+      pane_id=$("$herdr" pane current --current 2>/dev/null | grep -o '"pane_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+    fi
+    [ -n "$pane_id" ] && is_vim=1
   fi
 fi
 

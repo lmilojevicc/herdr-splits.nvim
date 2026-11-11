@@ -75,8 +75,9 @@ After changing `scripts/*.sh` or `herdr-plugin.toml`, run
   canonical formatter config.
 - Run [luacheck](https://github.com/mpeterv/luacheck) where practical to catch
   undefined globals and unused variables.
-- Keep the bash scripts POSIX-friendly where possible; they run on both Linux
-  and macOS as declared in `herdr-plugin.toml`.
+- Keep `scripts/*.sh` strictly POSIX `sh` (no bash-isms): the manifest runs
+  them with `/bin/sh` on both Linux and macOS, and they should spawn as few
+  processes as possible since they run on every keypress.
 
 ## Validation
 
@@ -87,7 +88,8 @@ Run the automated checks with:
 
 ```bash
 make test         # isolated mini.test suite in headless Neovim
-make check-shell  # bash syntax checks for both shipped scripts
+make check-shell  # sh syntax checks for both shipped scripts
+make test-shell   # script behaviour against a fake herdr, under sh/dash/bash
 make check        # all of the above
 ```
 

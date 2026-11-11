@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   shell:
-    name: Bash syntax
+    name: Shell scripts
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,6 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - run: make check-shell
+      - run: make test-shell
 
   test:
     name: Neovim ${{ matrix.neovim-version }}
